@@ -1,6 +1,4 @@
 <script lang="ts">
-	import '@fontsource-variable/big-shoulders-display';
-	import '#lib/ui/glass.css';
 	import { flushSync } from 'svelte';
 	import { live } from '#lib/live.svelte.ts';
 	import {
@@ -15,41 +13,67 @@
 	import { tick, unlockFeedback } from '#lib/ui/feedback.ts';
 	import Setup from '#lib/finance/Setup.svelte';
 	import Entry from '#lib/finance/Entry.svelte';
-	import Manage from '#lib/finance/Manage.svelte';
 	import WalletLoop from '#lib/ui/WalletLoop.svelte';
 	import ModeSwitch from '#lib/ui/ModeSwitch.svelte';
 	import RollingNumber from '#lib/ui/RollingNumber.svelte';
+	import { selection } from '#lib/finance/selection.svelte.ts';
+	import { formatWhole } from '#lib/core/currency.svelte.ts';
 
 	const wallets = live(listWallets, []);
 	const summary = live(budgetSummary, null);
 	const balances = live(walletBalances, {});
 
-	let mode = $state(0); // 0 = allowance, 1 = total budget
+	let mode = $state(0); // 0 = allowance, 1 = total balance
 	let selected = $state(0);
-	let managing = $state(false);
 
-	function openManage() {
-		unlockFeedback();
-		tick();
-		managing = true;
-	}
+	/*
+	 * The centered wallet is remembered outside this page (selection), so
+	 * coming back from Manage/Calendar lands on the same wallet, and the
+	 * Wallet layout can color everything in that wallet's colors.
+	 */
+	let restored = $state(false);
+	$effect.pre(() => {
+		if (restored || !wallets.loaded) return;
+		const i = items.findIndex((it) => it.id === selection.id);
+		selected = i >= 0 ? i : 0;
+		restored = true;
+	});
+	$effect(() => {
+		const id = items[selected]?.id;
+		if (restored && id) selection.id = id;
+	});
+
+	/** One box per day of the budget: filled = days that have started. */
+	const dayBoxes = $derived.by(() => {
+		const s = summary.current;
+		if (!s) return [];
+		return Array.from({ length: s.budget.days }, (_, i) => ({ filled: i < s.day, today: i === s.day - 1 }));
+	});
 
 	// "All" first, then every wallet. The loop wraps around forever.
 	const items = $derived([{ id: 'all', label: 'All' }, ...wallets.current.map((w) => ({ id: w.id, label: w.name }))]);
 
-	/** The centered wallet is exempt: it has no allowance, so show its balance instead. */
+	/** The centered wallet is exempt from the budget, so it has no allowance. */
 	const exempt = $derived.by(() => {
 		const id = items[selected]?.id;
 		const budget = summary.current?.budget;
 		return !!id && id !== 'all' && !!budget && !isInBudget(budget, id);
 	});
+	/** Only in ALLOWANCE is an exempt wallet special (greyed, showing its balance instead). */
+	const exemptShown = $derived(mode === 0 && exempt);
 
+	/**
+	 * ALLOWANCE: what's left to spend today (an exempt wallet shows its balance).
+	 * TOTAL BALANCE: what the wallet holds right now; "All" adds up every wallet.
+	 */
 	const value = $derived.by(() => {
 		const id = items[selected]?.id ?? 'all';
+		if (mode === 1) {
+			const held = id === 'all' ? wallets.current.reduce((s, w) => s + (balances.current[w.id] ?? 0), 0) : (balances.current[id] ?? 0);
+			return held / 100;
+		}
 		if (exempt) return (balances.current[id] ?? 0) / 100;
-		const n = summary.current?.byWallet[id];
-		if (!n) return 0;
-		return (mode === 0 ? n.allowance : n.remaining) / 100;
+		return (summary.current?.byWallet[id]?.allowance ?? 0) / 100;
 	});
 
 	const ready = $derived(wallets.loaded && summary.loaded);
@@ -74,7 +98,7 @@
 
 	// PC: start typing a number (or + / -) anywhere to open the entry screen.
 	function onWindowKey(e: KeyboardEvent) {
-		if (entry || managing || needsSetup || !ready) return;
+		if (entry || needsSetup || !ready) return;
 		if (e.ctrlKey || e.metaKey || e.altKey) return;
 		if (e.target instanceof HTMLInputElement) return;
 		if (/^[0-9.+-]$/.test(e.key)) {
@@ -103,49 +127,53 @@
 	<meta name="theme-color" content="#000000" />
 </svelte:head>
 
+
 <div class="screen">
-	<a class="back" href="/" aria-label="Back to tools">←</a>
+	<a class="back circle" href="/" aria-label="Back to tools">←</a>
 
 	{#if needsSetup}
 		<Setup wallets={wallets.current} />
 	{:else if ready}
-		<div class="top">
-			<ModeSwitch options={['ALLOWANCE', 'TOTAL BUDGET']} bind:value={mode} />
-		</div>
-
 		<div class="center">
-			<div class="wallets">
+			<div class="mode">
+				<ModeSwitch options={['ALLOWANCE', 'TOTAL BALANCE']} bind:value={mode} />
+			</div>
+			<div class="wallets display">
 				<WalletLoop {items} bind:selected />
 			</div>
-			<button class="big" class:exempt type="button" onclick={() => openEntry()} aria-label="Log an amount">
+			<button class="big display" class:exempt={exemptShown} style:--chars={formatWhole(Math.abs(value)).length + (value < 0 ? 1 : 0)} type="button" onclick={() => openEntry()} aria-label="Log an amount">
 				<RollingNumber {value} />
 			</button>
-			<p class="exempt-note" class:shown={exempt}>NOT IN BUDGET · BALANCE</p>
+			<p class="exempt-note label" class:shown={exemptShown}>Not in budget · balance</p>
 		</div>
 
 		<div class="bottom">
-			<button class="manage glass" type="button" onclick={openManage}>Manage</button>
 			{#if summary.current}
-				<p class="meta">
-					{#if summary.current.day > summary.current.budget.days}
-						Budget ended
-					{:else if summary.current.day < 1}
-						Starts {summary.current.budget.startDate}
-					{:else}
-						Day {summary.current.day} of {summary.current.budget.days}
-					{/if}
-				</p>
+				{@const s = summary.current}
+				<!-- Tapping the day boxes opens the calendar. -->
+				<a class="daysbar" href="/wallet/calendar" onpointerdown={() => (unlockFeedback(), tick())} aria-label="Day {s.day} of {s.budget.days}. Open calendar">
+					<div class="days" style:--n={s.budget.days}>
+						{#each dayBoxes as d, i (i)}
+							<i class:filled={d.filled} class:today={d.today}></i>
+						{/each}
+					</div>
+					<p class="label meta">
+						{#if s.day > s.budget.days}
+							Budget ended
+						{:else if s.day < 1}
+							Starts {s.budget.startDate}
+						{:else}
+							Day {s.day} of {s.budget.days}
+						{/if}
+						<span class="open">Calendar →</span>
+					</p>
+				</a>
 			{/if}
+			<a class="manage" href="/wallet/manage" onpointerdown={() => (unlockFeedback(), tick())}>
+				<span class="display">Manage</span>
+				<span class="circle" aria-hidden="true">→</span>
+			</a>
 		</div>
-	{/if}
-
-	{#if managing}
-		<Manage
-			wallets={wallets.current}
-			balances={balances.current}
-			budget={summary.current?.budget ?? null}
-			onclose={() => (managing = false)}
-		/>
 	{/if}
 
 	{#if entry}
@@ -162,10 +190,6 @@
 </div>
 
 <style>
-	:global(body) {
-		margin: 0;
-		background: #000;
-	}
 	.screen {
 		position: relative;
 		min-height: 100dvh;
@@ -175,60 +199,62 @@
 		justify-content: center;
 		padding: 16px;
 		box-sizing: border-box;
-		background: #000;
-		color: #fff;
-		font-family: 'Big Shoulders Display Variable', 'Arial Narrow', sans-serif;
-		font-size: 18px;
 		overflow: hidden;
+		/* Fades between wallets' colors (the Wallet layout sets them on the page). */
+		background: var(--bg);
+		color: var(--ink);
+		transition:
+			background-color 350ms ease,
+			color 350ms ease;
 	}
 	.back {
 		position: absolute;
 		top: calc(16px + env(safe-area-inset-top, 0px));
 		left: 16px;
-		color: #555;
-		text-decoration: none;
-		font-size: 1.5rem;
-		padding: 4px 8px;
 	}
-	.top {
-		position: absolute;
-		top: calc(56px + env(safe-area-inset-top, 0px));
-	}
+	/* Switch, wallets and number sit together as one block, centered in the
+	   space above the bottom bar (the padding keeps clear of it). */
 	.center {
+		container-type: inline-size; /* lets the number size itself to this width (cqw) */
 		display: flex;
 		flex-direction: column;
 		align-items: center;
 		width: 100%;
-		max-width: 520px;
+		max-width: 560px;
+		padding-bottom: 120px;
+	}
+	.mode {
+		margin-bottom: 28px;
 	}
 	.wallets {
 		width: 100%;
-		font-size: 1.6rem;
-		font-weight: 700;
+		font-size: calc(1.9rem / var(--font-wide));
 	}
 	.big {
-		font: inherit;
-		color: inherit;
+		color: var(--ink);
 		background: none;
 		border: 0;
 		padding: 0;
 		cursor: pointer;
-		font-size: clamp(6rem, 34vw, 12rem);
-		font-weight: 800;
-		letter-spacing: -0.01em;
-		margin-top: -0.04em;
-	}
-	.big {
+		/*
+		 * Auto-fit: big for short numbers, shrinking for long ones so it
+		 * always fits. --chars is the number's length (digits + commas);
+		 * 0.56em is about one character's width, scaled by the font's width.
+		 */
+		font-size: min(
+			calc(15rem / var(--font-wide)),
+			calc(46vw / var(--font-wide)),
+			calc(96cqw / (var(--chars) * 0.56 * var(--font-wide)))
+		);
+		margin-top: 0.02em;
 		transition: color 250ms;
 	}
 	.big.exempt {
-		color: #4a4a4a;
+		color: var(--dim);
 	}
 	/* Always takes up space (just invisible) so the number doesn't jump when it appears. */
 	.exempt-note {
-		margin: 4px 0 0;
-		color: #4a4a4a;
-		letter-spacing: 0.1em;
+		margin: 6px 0 0;
 		opacity: 0;
 		transition: opacity 250ms;
 	}
@@ -237,27 +263,54 @@
 	}
 	.bottom {
 		position: absolute;
-		bottom: calc(24px + env(safe-area-inset-bottom, 0px));
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 12px;
+		left: 16px;
+		right: 16px;
+		bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+		max-width: 520px;
+		margin: 0 auto;
 	}
-	.manage {
-		font: inherit;
-		font-size: 1.05rem;
-		letter-spacing: 0.1em;
-		padding: 10px 30px;
-		border-radius: 999px;
-		cursor: pointer;
-		transition: transform 120ms;
+	/* One box per budget day. Long budgets get thinner boxes, never a second row. */
+	.days {
+		display: grid;
+		grid-template-columns: repeat(var(--n), 1fr);
+		gap: 3px;
 	}
-	.manage:active {
-		transform: scale(0.96);
+	.days i {
+		height: 14px;
+		border: 2px solid var(--line);
+		box-sizing: border-box;
+	}
+	.days i.filled {
+		background: var(--ink);
+	}
+	.days i.today {
+		background: var(--accent);
+		border-color: var(--accent);
+	}
+	.daysbar {
+		display: block;
+		text-decoration: none;
 	}
 	.meta {
-		margin: 0;
-		color: #4a4a4a;
-		letter-spacing: 0.08em;
+		display: flex;
+		justify-content: space-between;
+		margin: 6px 0 12px;
+	}
+	.daysbar:active .days {
+		transform: scale(0.99);
+	}
+	.manage {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		border-top: 2px solid var(--line);
+		padding-top: 10px;
+		color: var(--ink);
+		text-decoration: none;
+		font-size: calc(2rem / var(--font-wide));
+	}
+	.manage:active .circle {
+		background: var(--ink);
+		color: var(--bg);
 	}
 </style>

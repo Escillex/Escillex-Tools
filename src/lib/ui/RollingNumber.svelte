@@ -4,11 +4,13 @@
 	 * number. Digits are keyed by their position from the right, so the
 	 * ones digit stays the ones digit and rolls instead of being replaced.
 	 */
+	import { formatWhole } from '#lib/core/currency.svelte.ts';
+
 	let { value, fast = false }: { value: number; fast?: boolean } = $props();
 
 	const DIGITS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
 
-	const text = $derived(Math.abs(Math.trunc(value)).toLocaleString('en-PH'));
+	const text = $derived(formatWhole(Math.abs(value)));
 	const chars = $derived([...text]);
 	const negative = $derived(value < 0);
 </script>

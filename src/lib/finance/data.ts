@@ -11,8 +11,6 @@ export const todayKey = () => toDateKey(new Date());
 /** "12.50" -> 1250. Rounds to the nearest centavo. */
 export const toCentavos = (pesos: number) => Math.round(pesos * 100);
 
-const peso = new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' });
-export const formatPeso = (centavos: number) => peso.format(centavos / 100);
 
 /** Stamp a record as changed right now. Every write goes through this. */
 const touch = <T extends SyncFields>(record: T): T => ({ ...record, updatedAt: Date.now() });
@@ -39,6 +37,11 @@ export async function listTransactions(limit = 300): Promise<Transaction[]> {
 	const all = (await db.transactions.toArray()).filter(alive);
 	all.sort((a, b) => (a.date === b.date ? b.updatedAt - a.updatedAt : a.date < b.date ? 1 : -1));
 	return all.slice(0, limit);
+}
+
+/** Every budget period, oldest first. */
+export async function listBudgets(): Promise<Budget[]> {
+	return (await db.budgets.orderBy('startDate').toArray()).filter(alive);
 }
 
 export async function currentBudget(): Promise<Budget | undefined> {
@@ -138,6 +141,47 @@ export async function createWallet(name: string, color: string, startingBalance 
 		}
 	});
 	return id;
+}
+
+/**
+ * Remove a wallet (soft delete, so the removal can sync later). Its
+ * transactions stay in history. If it had a budget share, that share is
+ * split among the other in-budget wallets in proportion, so the plan
+ * still adds up to 100%.
+ */
+export async function deleteWallet(id: string): Promise<void> {
+	await db.transaction('rw', db.wallets, db.budgets, async () => {
+		const w = await db.wallets.get(id);
+		if (!w) return;
+		await db.wallets.put(touch({ ...w, deleted: true }));
+
+		const budget = await currentBudget();
+		if (!budget || !(id in budget.split)) return;
+		const freed = budget.split[id] ?? 0;
+		const split = { ...budget.split };
+		delete split[id];
+
+		const inBudget = Object.entries(split).filter(([, p]) => p > 0);
+		const othersTotal = inBudget.reduce((s, [, p]) => s + p, 0);
+		if (freed > 0 && othersTotal > 0) {
+			let given = 0;
+			inBudget.forEach(([wid, p], i) => {
+				// Last one takes the rounding leftover so it's exactly 100.
+				const extra = i === inBudget.length - 1 ? freed - given : Math.round((freed * p) / othersTotal);
+				split[wid] = p + extra;
+				given += extra;
+			});
+		}
+		await db.budgets.put(touch({ ...budget, split }));
+	});
+}
+
+/** Set (or clear, with an empty object) a wallet's own colors. */
+export async function setWalletTheme(id: string, theme: Wallet['theme']): Promise<void> {
+	const w = await db.wallets.get(id);
+	if (!w) return;
+	const clean = Object.fromEntries(Object.entries(theme ?? {}).filter(([, v]) => !!v));
+	await db.wallets.put(touch({ ...w, theme: Object.keys(clean).length ? clean : undefined }));
 }
 
 export async function renameWallet(id: string, name: string): Promise<void> {

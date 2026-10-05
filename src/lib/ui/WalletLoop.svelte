@@ -19,7 +19,29 @@
 		selected?: number;
 	} = $props();
 
-	const SLOT = 104; // px between label centers
+	/*
+	 * Distance between label centers. Measured from the widest name in the
+	 * current font (wide fonts need more room), plus the tag's padding and a
+	 * gap, so the tag never runs into its neighbours.
+	 */
+	let slot = $state(118);
+	let measurer: HTMLDivElement;
+	function measure() {
+		if (!measurer) return;
+		const spans = [...measurer.children] as HTMLElement[];
+		const widest = Math.max(0, ...spans.map((s) => s.offsetWidth));
+		const em = parseFloat(getComputedStyle(measurer).fontSize) || 16;
+		slot = Math.max(90, Math.ceil(widest + em * 0.84 + 28));
+	}
+	// Re-measure when the names change, the font loads, or the font/size changes.
+	$effect(() => {
+		void items.map((i) => i.label).join('|');
+		measure();
+		document.fonts?.ready.then(measure);
+		const ro = new ResizeObserver(measure);
+		ro.observe(measurer);
+		return () => ro.disconnect();
+	});
 	const VISIBLE = 4; // slots drawn on each side
 
 	let pos = $state(selected);
@@ -38,7 +60,7 @@
 			out.push({
 				v,
 				item: items[mod(v, n)],
-				x: (v - pos) * SLOT,
+				x: (v - pos) * slot,
 				opacity: d < 1 ? 1 - d * 0.62 : Math.max(0, 0.38 - (d - 1) * 0.11)
 			});
 		}
@@ -96,7 +118,7 @@
 		if (!dragging) return;
 		const dx = e.clientX - startX;
 		moved = Math.max(moved, Math.abs(dx));
-		pos = startPos - dx / SLOT;
+		pos = startPos - dx / slot;
 		samples.push({ t: e.timeStamp, pos });
 		if (samples.length > 6) samples.shift();
 		settle();
@@ -109,7 +131,7 @@
 		// A tap (barely moved): jump to the label that was tapped.
 		if (moved < 6) {
 			const rect = el.getBoundingClientRect();
-			const offset = (e.clientX - (rect.left + rect.width / 2)) / SLOT;
+			const offset = (e.clientX - (rect.left + rect.width / 2)) / slot;
 			animateTo(Math.round(pos + offset));
 			return;
 		}
@@ -129,7 +151,7 @@
 		unlockFeedback();
 		cancelAnimationFrame(frame);
 		const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
-		pos += delta / SLOT;
+		pos += delta / slot;
 		settle();
 		clearTimeout(wheelTimer);
 		wheelTimer = setTimeout(() => animateTo(Math.round(pos)), 110);
@@ -182,9 +204,18 @@
 	onpointercancel={onPointerUp}
 	onkeydown={onKeyDown}
 >
+	<!-- Invisible copies of every name, used only to measure their widths. -->
+	<div class="measurer display" bind:this={measurer} aria-hidden="true">
+		{#each items as it (it.id)}<span>{it.label}</span>{/each}
+	</div>
+
 	{#each slots as s (s.v)}
-		<span class="label" style:transform="translateX(calc(-50% + {s.x}px))" style:opacity={s.opacity}>
-			{s.item.label}
+		{@const centered = Math.abs(s.x / slot) < 0.5}
+		<!-- The tag fades in over the last half-step before a label reaches the center. -->
+		{@const t = centered ? 1 - Math.abs(s.x / slot) * 2 : 0}
+		<span class="slot display" style:transform="translateX(calc(-50% + {s.x}px))" style:opacity={s.opacity}>
+			<!-- Text switches to the tag's ink only once the tag is solid enough to read on. -->
+			<span class:tag={centered} style:--t={t} style:color={t > 0.5 ? 'var(--accent-ink)' : 'var(--ink)'}>{s.item.label}</span>
 		</span>
 	{/each}
 </div>
@@ -206,12 +237,26 @@
 	.loop:focus-visible {
 		outline: none;
 	}
-	.label {
+	.slot {
 		position: absolute;
 		left: 50%;
 		top: 0;
 		white-space: nowrap;
 		line-height: 1.6em;
 		will-change: transform;
+	}
+	.measurer {
+		position: absolute;
+		visibility: hidden;
+		pointer-events: none;
+		white-space: nowrap;
+		display: flex;
+		align-items: flex-start;
+	}
+	.measurer span {
+		flex: none;
+	}
+	.slot :global(.tag::before) {
+		opacity: var(--t, 1);
 	}
 </style>

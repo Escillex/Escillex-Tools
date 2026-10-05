@@ -1,0 +1,254 @@
+/*
+ * The app's visual language: hard lines, big type, one accent.
+ * Loaded once by the root layout. Colors and font are set by the theme
+ * (lib/core/theme.svelte.ts); these are just the defaults.
+ *
+ * Only three colors are chosen: --bg, --ink (text) and --accent. The rest
+ * are mixed from them, so any combination stays consistent.
+ */
+:root {
+	--bg: #000;
+	--ink: #fff;
+	--accent: #fff;
+	--accent-ink: #000; /* text on the accent: black or white, picked for contrast */
+	--danger: #ff3b30;
+	--font: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+	--font-weight: 900;
+	--font-style: italic;
+	--font-body-weight: 600;
+	/* How wide the display font is vs Barlow; display sizes divide by it. */
+	--font-wide: 1;
+	color-scheme: dark;
+}
+
+/*
+ * Derived colors. They're declared on every element that sets its own
+ * --bg/--ink (the root, and a wallet screen with its own colors), because
+ * a mix is worked out where it's declared, not where it's used.
+ */
+:root,
+.themed {
+	--line: var(--ink);
+	--dim: color-mix(in srgb, var(--ink) 42%, var(--bg));
+	--faint: color-mix(in srgb, var(--ink) 14%, var(--bg));
+}
+
+html,
+body {
+	margin: 0;
+	background: var(--bg);
+	color: var(--ink);
+	/* Fade when the colors change (e.g. swiping to a wallet with its own colors). */
+	transition:
+		background-color 350ms ease,
+		color 350ms ease;
+	font-family: var(--font);
+	font-weight: var(--font-body-weight);
+	font-style: var(--font-style);
+}
+
+/* Big display text: wallet names, numbers, headings. */
+.display {
+	font-family: var(--font);
+	font-weight: var(--font-weight);
+	font-style: var(--font-style);
+	text-transform: uppercase;
+	line-height: 0.95;
+}
+
+/*
+ * The slanted highlight tag, Persona-style. The slant is a skewed
+ * background behind the text, so the text itself stays upright.
+ */
+.tag {
+	position: relative;
+	display: inline-block;
+	padding: 0.04em 0.42em;
+	color: var(--accent-ink);
+	isolation: isolate;
+}
+.tag::before {
+	content: '';
+	position: absolute;
+	inset: 0;
+	z-index: -1;
+	background: var(--accent);
+	transform: skewX(-18deg);
+}
+
+/* Buttons: square, 2px outline. Primary ones are slanted accent blocks. */
+.btn {
+	font: inherit;
+	font-family: var(--font);
+	font-weight: var(--font-weight);
+	font-style: var(--font-style);
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	font-size: 1.15rem;
+	color: var(--ink);
+	background: transparent;
+	border: 2px solid var(--line);
+	border-radius: 0;
+	padding: 10px 18px;
+	cursor: pointer;
+	transition: transform 100ms;
+}
+.btn:active {
+	transform: scale(0.97);
+}
+.btn:disabled {
+	opacity: 0.3;
+	cursor: not-allowed;
+}
+.btn-primary {
+	background: var(--accent);
+	color: var(--accent-ink);
+	border-color: var(--accent);
+	clip-path: polygon(6% 0, 100% 0, 94% 100%, 0 100%);
+	padding-inline: 26px;
+}
+/* The slant clips a normal outline, so show focus inside the block instead. */
+.btn-primary:focus-visible {
+	outline: none;
+	box-shadow: inset 0 0 0 3px var(--accent-ink);
+}
+.btn-danger {
+	border-color: var(--danger);
+	color: var(--danger);
+}
+
+/* The round arrow button from the brutalist reference. */
+.circle {
+	display: inline-grid;
+	place-items: center;
+	width: 2.1rem;
+	height: 2.1rem;
+	border: 2px solid var(--line);
+	border-radius: 50%;
+	font-style: normal;
+	font-family: system-ui, sans-serif;
+	font-weight: 400;
+	color: var(--ink);
+	background: none;
+	cursor: pointer;
+	text-decoration: none;
+	line-height: 1;
+}
+
+/* Inputs: flat, square, a hard bottom line. */
+.field {
+	box-sizing: border-box;
+	width: 100%;
+	min-width: 0;
+	background: transparent;
+	border: 0;
+	border-bottom: 2px solid var(--line);
+	border-radius: 0;
+	color: var(--ink);
+	font: inherit;
+	font-size: 1.25rem;
+	padding: 8px 2px;
+}
+.field::placeholder {
+	color: var(--dim);
+}
+.field:focus {
+	outline: none;
+	border-bottom-color: var(--accent);
+}
+
+.label {
+	font-family: ui-monospace, 'JetBrains Mono', Consolas, monospace;
+	font-style: normal;
+	font-weight: 500;
+	font-size: 0.72rem;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--dim);
+}
+
+:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 3px;
+}
+
+
+/*
+ * Page transitions, Persona-style (see onNavigate in the root layout).
+ *
+ * Forward: the old page is flung right and tilted, the accent color
+ * flashes behind it for a beat, then the new page slashes in from the
+ * left along a diagonal edge with a little scale punch. Back mirrors it.
+ *
+ * The accent flash is the background of the "image pair": the layer that
+ * holds both page snapshots, so it shows wherever neither page covers.
+ */
+:root[data-nav='forward']::view-transition-image-pair(root),
+:root[data-nav='back']::view-transition-image-pair(root) {
+	background: var(--accent);
+}
+/* Browsers blend the snapshots by adding their light (for crossfades). Over a
+   colored background that washes everything out, so draw them normally. */
+:root[data-nav='forward']::view-transition-old(root),
+:root[data-nav='forward']::view-transition-new(root),
+:root[data-nav='back']::view-transition-old(root),
+:root[data-nav='back']::view-transition-new(root) {
+	mix-blend-mode: normal;
+}
+
+@keyframes fling-right {
+	to {
+		transform: translateX(45%) skewX(-10deg) scale(0.94);
+		opacity: 0;
+	}
+}
+@keyframes fling-left {
+	to {
+		transform: translateX(-45%) skewX(10deg) scale(0.94);
+		opacity: 0;
+	}
+}
+/* The diagonal edge: a clip-path whose leading side is slanted, sweeping across. */
+@keyframes slash-from-left {
+	from {
+		clip-path: polygon(0 0, 0 0, -35% 100%, -35% 100%);
+		transform: translateX(-10%) scale(1.06);
+	}
+	to {
+		clip-path: polygon(0 0, 135% 0, 100% 100%, -35% 100%);
+		transform: none;
+	}
+}
+@keyframes slash-from-right {
+	from {
+		clip-path: polygon(135% 0, 135% 0, 100% 100%, 100% 100%);
+		transform: translateX(10%) scale(1.06);
+	}
+	to {
+		clip-path: polygon(0 0, 135% 0, 100% 100%, -35% 100%);
+		transform: none;
+	}
+}
+
+:root[data-nav='forward']::view-transition-old(root) {
+	animation: 240ms cubic-bezier(0.7, 0, 0.84, 0) both fling-right;
+}
+:root[data-nav='forward']::view-transition-new(root) {
+	animation: 420ms 110ms cubic-bezier(0.16, 1, 0.3, 1) both slash-from-left;
+}
+:root[data-nav='back']::view-transition-old(root) {
+	animation: 240ms cubic-bezier(0.7, 0, 0.84, 0) both fling-left;
+}
+:root[data-nav='back']::view-transition-new(root) {
+	animation: 420ms 110ms cubic-bezier(0.16, 1, 0.3, 1) both slash-from-right;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	::view-transition-image-pair(root) {
+		background: none !important;
+	}
+	::view-transition-old(root),
+	::view-transition-new(root) {
+		animation: none !important;
+	}
+}

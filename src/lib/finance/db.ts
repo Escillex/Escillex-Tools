@@ -16,6 +16,11 @@ export interface Wallet extends SyncFields {
 	name: string;
 	color: string;
 	order: number;
+	/**
+	 * Optional colors for this wallet's screen. Anything left out uses the
+	 * app's colors. ink 'auto' = black or white, whichever suits the background.
+	 */
+	theme?: { bg?: string; ink?: string; accent?: string };
 }
 
 /**

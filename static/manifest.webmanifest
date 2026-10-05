@@ -13,5 +13,12 @@
 	],
 	"shortcuts": [
 		{ "name": "Wallet", "short_name": "Wallet", "url": "/wallet", "icons": [{ "src": "/icon.svg", "sizes": "any" }] }
+	],
+	"file_handlers": [
+		{
+			"action": "/",
+			"accept": { "application/x-escillex-backup": [".escb"] },
+			"launch_type": "single-client"
+		}
 	]
 }
