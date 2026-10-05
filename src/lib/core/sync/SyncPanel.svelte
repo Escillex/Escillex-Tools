@@ -11,6 +11,7 @@
 	import { CODE_LENGTH, codeToQr, groupCode, newSyncCode, normalizeCode, parseCode } from './crypto';
 	import { cancel, confirmSync, forgetCode, loadCode, saveCode, startSync, sync } from './session.svelte';
 	import type { Counts } from './snapshot';
+	import { progressFor, type ProgressStep } from './progress';
 
 	let { onclose }: { onclose: () => void } = $props();
 
@@ -93,8 +94,27 @@
 		feedback(true);
 	}
 
+	const LABELS: Record<ProgressStep, string> = {
+		connecting: 'Connecting…',
+		searching: 'Looking for your other device…',
+		sending: 'Found it. Locking and sending your data…',
+		receiving: 'Receiving and unlocking…',
+		comparing: 'Comparing…'
+	};
+	const inProgress = (step: string): step is ProgressStep => step in LABELS;
+
+	/** Ticks while searching, so the bar creeps and the seconds count up. */
+	let now = $state(Date.now());
+	$effect(() => {
+		if (sync.status.step !== 'searching') return;
+		now = Date.now();
+		const id = setInterval(() => (now = Date.now()), 250);
+		return () => clearInterval(id);
+	});
+	const searchedMs = $derived(sync.status.step === 'searching' ? Math.max(0, now - sync.status.since) : 0);
+
 	function close() {
-		if (sync.status.step === 'waiting' || sync.status.step === 'sending') cancel();
+		if (inProgress(sync.status.step)) cancel();
 		onclose();
 	}
 
@@ -116,11 +136,19 @@
 <Sheet title="Sync" onclose={close}>
 	{#if sync.status.step !== 'idle'}
 		{@const s = sync.status}
-		{#if s.step === 'sending'}
-			<p class="big display">Locking and sending…</p>
-		{:else if s.step === 'waiting'}
-			<p class="big display">Waiting for your other device</p>
-			<p class="dim">Press <b>Sync all</b> on it too. This keeps checking for up to 10 minutes.</p>
+		{#if inProgress(s.step)}
+			{@const pct = progressFor(s.step, searchedMs)}
+			<p class="big display">Syncing</p>
+			<div class="bar" role="progressbar" aria-label="Sync progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(pct)}>
+				<div class="fill" style:width="{pct}%"></div>
+			</div>
+			<p class="step">
+				<span>{LABELS[s.step]}</span>
+				{#if s.step === 'searching'}<span class="label">{Math.floor(searchedMs / 1000)}s</span>{/if}
+			</p>
+			{#if s.step === 'searching' || s.step === 'connecting'}
+				<p class="dim">Press <b>Sync all</b> on your other device too. This looks for up to 2 minutes.</p>
+			{/if}
 			<button class="btn" type="button" onclick={() => (feedback(), cancel())}>Cancel</button>
 		{:else if s.step === 'review'}
 			{@const nothing = s.comparison.incoming.added + s.comparison.incoming.changed + s.comparison.incoming.deleted === 0}
@@ -139,9 +167,6 @@
 				{#each Object.entries(s.comparison.byTool) as [id, c] (id)}
 					<p class="dim">{toolName(id)}: gets {describe(c.incoming)}, sends {describe(c.outgoing)}</p>
 				{/each}
-			{/if}
-			{#if s.skipped > 0}
-				<p class="warn">Ignored {s.skipped} upload{s.skipped > 1 ? 's' : ''} that didn't come from your devices.</p>
 			{/if}
 			<p class="dim">If the same entry changed on both, the most recent edit wins.</p>
 			<button class="btn btn-primary" type="button" onclick={() => (feedback(true), confirmSync())}>{nothing ? 'Done' : 'Merge'}</button>
@@ -204,7 +229,7 @@
 			{armedUnpair ? 'Tap again to unpair this device' : 'Unpair this device'}
 		</button>
 	{:else}
-		<p class="dim">Pair your phone and computer to keep your data the same on both. It's locked on your device before it's sent, and the server deletes it after 10 minutes.</p>
+		<p class="dim">Pair your phone and computer to keep your data the same on both. It's locked on your device before it's sent, and the server passes it straight across without keeping it.</p>
 		<button class="btn btn-primary" type="button" onclick={showCode}>Show pairing code</button>
 		<button class="btn" type="button" onclick={() => (feedback(), (view = 'type'))}>Type a code</button>
 		<button class="btn" type="button" onclick={() => (feedback(), (view = 'scan'))}>Scan a code</button>
@@ -226,6 +251,23 @@
 	}
 	.small {
 		font-size: calc(0.9rem / var(--font-wide));
+	}
+	/* The bar eases between steps; while searching it creeps in small ticks. */
+	.bar {
+		height: 14px;
+		border: 2px solid var(--line);
+		overflow: hidden;
+	}
+	.fill {
+		height: 100%;
+		background: var(--accent);
+		transition: width 0.4s ease-out;
+	}
+	.step {
+		display: flex;
+		justify-content: space-between;
+		gap: 12px;
+		margin: 0;
 	}
 	.sync-all {
 		font-size: calc(1.6rem / var(--font-wide));

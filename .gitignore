@@ -10,6 +10,9 @@ node_modules
 
 # Local editor/assistant settings
 .claude/
+CLAUDE.md
+docs/agents/
+docs/superpowers/
 
 # OS
 .DS_Store

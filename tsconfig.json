@@ -5,5 +5,6 @@
 	},
 	"include": ["src", "vite.config.ts"],
 	// The service worker runs in a different environment (no DOM), so it has its own tsconfig.
-	"exclude": ["src/service-worker"]
+	// src/worker.ts imports a build output, so it's checked by the build, not here.
+	"exclude": ["src/service-worker", "src/worker.ts"]
 }

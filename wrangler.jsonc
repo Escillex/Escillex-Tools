@@ -3,7 +3,8 @@
 {
 	"$schema": "./node_modules/wrangler/config-schema.json",
 	"name": "escillex-tools",
-	// The small server script (handles anything that isn't a static file, like the sync relay).
+	// The small server script (handles anything that isn't a static file, like the sync room).
+	// `npm run build` points it at src/worker.ts (see scripts/wrap-worker.js).
 	"main": ".svelte-kit/cloudflare/_worker.js",
 	"compatibility_date": "2026-10-01",
 	// The built app: JS, CSS, fonts, icons, and the prerendered pages.
@@ -11,9 +12,10 @@
 		"binding": "ASSETS",
 		"directory": ".svelte-kit/cloudflare"
 	},
-	// The sync mailbox. Holds encrypted snapshots for 10 minutes. Local dev
-	// uses a fake on-disk copy; the real one gets created on Cloudflare.
-	"kv_namespaces": [{ "binding": "SYNC" }],
-	// Per-IP request limit for the sync API: 60 requests per minute.
+	// The sync room: one per pairing code. Two devices meet here and swap
+	// encrypted snapshots live. Nothing is stored, and it sleeps while waiting.
+	"durable_objects": { "bindings": [{ "name": "SYNC_ROOM", "class_name": "SyncRoom" }] },
+	"migrations": [{ "tag": "v1", "new_sqlite_classes": ["SyncRoom"] }],
+	// Per-IP limit for opening sync connections: 60 per minute.
 	"ratelimits": [{ "name": "SYNC_LIMITER", "namespace_id": "1001", "simple": { "limit": 60, "period": 60 } }]
 }

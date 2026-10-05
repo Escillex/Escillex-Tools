@@ -1,23 +1,35 @@
 /**
- * Types for the Cloudflare bindings in wrangler.jsonc. Server code reads
- * them with `import { env } from 'cloudflare:workers'`; locally the
- * adapter fills them with on-disk fakes.
+ * Types for the Cloudflare parts the sync room uses. Only what the code
+ * touches is declared here, so the rest of the app keeps plain browser types.
  */
 declare module 'cloudflare:workers' {
-	/** The parts of Cloudflare KV the sync relay uses. */
-	interface SyncKV {
-		get(key: string): Promise<string | null>;
-		put(key: string, value: string, options?: { expirationTtl?: number; metadata?: unknown }): Promise<void>;
-		list<M = unknown>(options?: { prefix?: string; limit?: number }): Promise<{ keys: { name: string; metadata?: M }[] }>;
+	/** Base class for Durable Objects: one instance per id, with its own WebSockets. */
+	export abstract class DurableObject<Env = unknown> {
+		protected ctx: DurableObjectState;
+		protected env: Env;
+		constructor(ctx: DurableObjectState, env: Env);
 	}
+}
 
-	/** Cloudflare's rate limiting binding. */
-	interface RateLimiter {
-		limit(options: { key: string }): Promise<{ success: boolean }>;
-	}
+/** The parts of a Durable Object's state the sync room uses (the hibernation WebSocket API). */
+interface DurableObjectState {
+	acceptWebSocket(ws: WebSocket, tags?: string[]): void;
+	getWebSockets(tag?: string): WebSocket[];
+	getTags(ws: WebSocket): string[];
+}
 
-	export const env: {
-		SYNC?: SyncKV;
-		SYNC_LIMITER?: RateLimiter;
-	};
+/** Cloudflare's way to make a WebSocket: one end goes back to the browser, the other stays here. */
+declare class WebSocketPair {
+	0: WebSocket;
+	1: WebSocket;
+}
+
+interface WebSocket {
+	/** Cloudflare only: start handling a WebSocket without hibernation. */
+	accept(): void;
+}
+
+interface ResponseInit {
+	/** Cloudflare only: the browser's end of a WebSocketPair, sent with a 101 response. */
+	webSocket?: WebSocket;
 }
