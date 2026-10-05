@@ -3,6 +3,7 @@
 	// and a list of app-wide actions along the bottom.
 	import { tools } from '#lib/apps.ts';
 	import { install } from '#lib/core/install.svelte.ts';
+	import { update } from '#lib/core/update.svelte.ts';
 	import { tick, unlockFeedback } from '#lib/ui/feedback.ts';
 	import Sheet from '#lib/ui/Sheet.svelte';
 	import SyncPanel from '#lib/core/sync/SyncPanel.svelte';
@@ -37,6 +38,17 @@
 		else open = 'install';
 	}
 
+	function onUpdate() {
+		unlockFeedback();
+		tick();
+		if (update.status === 'ready') update.apply();
+		else if (update.status !== 'checking') update.check();
+	}
+
+	const updateLabel = $derived(
+		{ idle: 'Update', checking: 'Checking…', ready: 'Restart to update', latest: 'Up to date', offline: 'Offline' }[update.status]
+	);
+
 	const canInstall = $derived(!install.installed && (install.canPrompt || install.needsManualSteps));
 </script>
 
@@ -58,6 +70,9 @@
 		</button>
 		<button type="button" class="row" onclick={() => show('settings')}>
 			<span class="display">Settings</span><span class="circle" aria-hidden="true">→</span>
+		</button>
+		<button type="button" class="row" onclick={onUpdate} aria-live="polite">
+			<span class="display">{updateLabel}</span><span class="circle" aria-hidden="true">↻</span>
 		</button>
 		{#if canInstall}
 			<button type="button" class="row" onclick={onInstall}>
