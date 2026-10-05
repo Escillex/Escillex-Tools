@@ -1,0 +1,14 @@
+// Cloudflare deploy settings. `npm run build` writes the app into
+// .svelte-kit/cloudflare; wrangler uploads it from there.
+{
+	"$schema": "./node_modules/wrangler/config-schema.json",
+	"name": "escillex-tools",
+	// The small server script (handles anything that isn't a static file, like the sync relay later).
+	"main": ".svelte-kit/cloudflare/_worker.js",
+	"compatibility_date": "2026-10-01",
+	// The built app: JS, CSS, fonts, icons, and the prerendered pages.
+	"assets": {
+		"binding": "ASSETS",
+		"directory": ".svelte-kit/cloudflare"
+	}
+}

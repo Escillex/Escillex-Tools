@@ -1,0 +1,9 @@
+{
+	"extends": "$app/tsconfig",
+	"compilerOptions": {
+		"strict": true
+	},
+	"include": ["src", "vite.config.ts"],
+	// The service worker runs in a different environment (no DOM), so it has its own tsconfig.
+	"exclude": ["src/service-worker"]
+}

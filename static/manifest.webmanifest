@@ -1,0 +1,17 @@
+{
+	"id": "/",
+	"name": "Escillex Tools",
+	"short_name": "Tools",
+	"description": "Small everyday tools. Your data stays on your own devices.",
+	"start_url": "/",
+	"scope": "/",
+	"display": "standalone",
+	"background_color": "#000000",
+	"theme_color": "#000000",
+	"icons": [
+		{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+	],
+	"shortcuts": [
+		{ "name": "Wallet", "short_name": "Wallet", "url": "/wallet", "icons": [{ "src": "/icon.svg", "sizes": "any" }] }
+	]
+}
