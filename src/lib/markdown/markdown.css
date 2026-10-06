@@ -1,0 +1,147 @@
+/*
+ * Rendered Markdown in the suite's look: reading font for text, display
+ * font for headings, hard 2px rules for tables and quotes.
+ */
+.md {
+	font-family: var(--font-read);
+	font-style: normal;
+	font-weight: 400;
+	line-height: 1.6;
+	font-size: 1.05rem;
+	overflow-wrap: anywhere;
+}
+.md h1 {
+	font-size: calc(2.6rem / var(--font-wide));
+	margin: 0.4em 0 0.5em -0.2em;
+}
+.md h2,
+.md h3,
+.md h4 {
+	font-family: var(--font);
+	font-weight: var(--font-weight);
+	font-style: var(--font-style);
+	text-transform: uppercase;
+	line-height: 0.95;
+	margin: 1.2em 0 0.4em;
+}
+.md h2 {
+	font-size: calc(2rem / var(--font-wide));
+	border-bottom: 2px solid var(--line);
+	padding-bottom: 4px;
+}
+.md h3 {
+	font-size: calc(1.5rem / var(--font-wide));
+}
+.md a {
+	color: var(--ink);
+	text-decoration-color: var(--accent);
+	text-decoration-thickness: 2px;
+}
+.md code,
+.md pre {
+	font-family: var(--font-mono);
+	font-size: 0.92em;
+}
+.md code {
+	background: var(--faint);
+	padding: 0.1em 0.3em;
+}
+.md pre {
+	border: 2px solid var(--line);
+	padding: 12px;
+	overflow-x: auto;
+}
+.md pre code {
+	background: none;
+	padding: 0;
+}
+.md blockquote {
+	margin: 1em 0;
+	padding: 0 0 0 14px;
+	border-left: 4px solid var(--accent);
+	color: var(--dim);
+}
+.md hr {
+	border: 0;
+	border-top: 2px solid var(--line);
+}
+.md table {
+	border-collapse: collapse;
+	margin: 1em 0;
+	display: block;
+	overflow-x: auto;
+	max-width: 100%;
+}
+.md th,
+.md td {
+	border: 2px solid var(--line);
+	padding: 6px 10px;
+	text-align: left;
+	vertical-align: top;
+}
+.md th {
+	background: var(--faint);
+	font-family: var(--font-mono);
+	font-size: 0.8rem;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+}
+.md table[data-src] th,
+.md table[data-src] td {
+	cursor: text;
+}
+.md td.editing,
+.md th.editing {
+	outline: 3px solid var(--accent);
+	outline-offset: -3px;
+	white-space: pre-wrap;
+}
+.md li.task-item {
+	list-style: none;
+	margin-left: -1.3em;
+}
+.md input.task {
+	appearance: none;
+	width: 1.05em;
+	height: 1.05em;
+	border: 2px solid var(--line);
+	margin: 0 0.45em 0 0;
+	vertical-align: -0.15em;
+	cursor: pointer;
+}
+.md input.task:checked {
+	background: var(--accent);
+	border-color: var(--accent);
+}
+.md li.task-item:has(input.task:checked) {
+	color: var(--dim);
+	text-decoration: line-through;
+}
+
+/* Write mode: the box a block turns into while it's edited (created by Viewer.svelte). */
+.md textarea.block-box {
+	display: block;
+	box-sizing: border-box;
+	width: 100%;
+	/* Room above for the floating toolbar, so it never covers the block before this one. */
+	margin: 3.6rem 0 0.6em;
+	padding: 8px 10px;
+	resize: none;
+	overflow: hidden;
+	background: var(--bg);
+	color: var(--ink);
+	border: 2px solid var(--accent);
+	outline: none;
+	font-family: var(--font-mono);
+	font-size: 0.95rem;
+	line-height: 1.6;
+}
+.md.write [data-block] {
+	cursor: text;
+}
+@media (pointer: coarse) {
+	/* On phones the toolbar sits above the keyboard instead. */
+	.md textarea.block-box {
+		margin-top: 0.6em;
+	}
+}

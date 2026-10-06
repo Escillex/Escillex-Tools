@@ -10,6 +10,8 @@ import { tools } from '#lib/apps.ts';
 import type { SyncFields } from '#lib/finance/db.ts';
 import { getSetting } from '#lib/core/db.ts';
 import { currencyForSync, isCurrency, setCurrency } from '#lib/core/currency.svelte.ts';
+import { applyLooks, looksForSync } from '#lib/core/theme.svelte.ts';
+import { incomingLooks, outgoingLooks, type Looks } from './looks';
 
 type Rec = SyncFields & Record<string, unknown>;
 
@@ -23,7 +25,7 @@ export interface Snapshot {
 	/** toolId → table name → records */
 	tools: Record<string, Record<string, Rec[]>>;
 	/** App-wide settings that follow you across devices. */
-	settings?: { currency?: Stamped<string> };
+	settings?: { currency?: Stamped<string>; looks?: Looks };
 }
 
 /** The newest stamped value among several snapshots' settings. */
@@ -50,7 +52,7 @@ export async function buildSnapshot(): Promise<Snapshot> {
 		deviceId: (await getSetting<string>('deviceId')) ?? 'unknown',
 		at: Date.now(),
 		tools: out,
-		settings: currency ? { currency } : {}
+		settings: { ...(currency ? { currency } : {}), looks: await looksForSync() }
 	};
 }
 
@@ -128,6 +130,10 @@ export function compare(local: Snapshot, remotes: Snapshot[]): Comparison {
 		if (!mine || theirs.at > mine.at) result.incoming.changed++;
 		else result.outgoing.changed++;
 	}
+	const myLooks = local.settings?.looks ?? {};
+	const theirLooks = remotes.map((r) => r.settings?.looks);
+	result.incoming.changed += Object.keys(incomingLooks(myLooks, theirLooks)).length;
+	result.outgoing.changed += outgoingLooks(myLooks, theirLooks);
 	return result;
 }
 
@@ -154,6 +160,9 @@ export async function replaceWith(snapshot: Snapshot): Promise<number> {
 	}
 	const c = snapshot.settings?.currency;
 	if (c && isCurrency(c.value) && typeof c.at === 'number') await setCurrency(c.value, c.at);
+	// Restoring a backup takes its look too.
+	const looks = incomingLooks({}, [snapshot.settings?.looks]);
+	if (Object.keys(looks).length) await applyLooks(looks);
 	return written;
 }
 
@@ -197,6 +206,13 @@ export async function applyRemotes(remotes: Snapshot[]): Promise<number> {
 	if (theirs && isCurrency(theirs.value) && theirs.value !== mine?.value && (!mine || theirs.at > mine.at)) {
 		await setCurrency(theirs.value, theirs.at);
 		written++;
+	}
+
+	// The same for the look (colours, fonts), one setting at a time.
+	const looks = incomingLooks(await looksForSync(), remotes.map((r) => r.settings?.looks));
+	if (Object.keys(looks).length) {
+		await applyLooks(looks);
+		written += Object.keys(looks).length;
 	}
 	return written;
 }

@@ -8,6 +8,7 @@
 	import { tools } from '#lib/apps.ts';
 	import { install } from '#lib/core/install.svelte.ts';
 	import { tick, unlockFeedback } from '#lib/ui/feedback.ts';
+	import Wordmark from '#lib/ui/Wordmark.svelte';
 	import BackupPanel from '#lib/core/backup/BackupPanel.svelte';
 
 	let hasData = $state(false);
@@ -26,7 +27,7 @@
 </script>
 
 <div class="screen">
-	<p class="label top">Escillex Tools</p>
+	<Wordmark />
 
 	<main>
 		<h1 class="display">Install <span class="tag">to use</span></h1>
@@ -76,11 +77,6 @@
 		padding: calc(18px + env(safe-area-inset-top, 0px)) 16px calc(18px + env(safe-area-inset-bottom, 0px));
 		max-width: 620px;
 		margin: 0 auto;
-	}
-	.top {
-		margin: 0;
-		padding-bottom: 8px;
-		border-bottom: 2px solid var(--line);
 	}
 	main {
 		flex: 1;

@@ -13,10 +13,16 @@
 
 	let {
 		items,
-		selected = $bindable(0)
+		selected = $bindable(0),
+		label = 'Wallet',
+		onactivate
 	}: {
 		items: { id: string; label: string }[];
 		selected?: number;
+		/** What the dial picks, for screen readers. */
+		label?: string;
+		/** Tapping the label that's already centred (or Enter): "open this one". */
+		onactivate?: () => void;
 	} = $props();
 
 	/*
@@ -132,7 +138,9 @@
 		if (moved < 6) {
 			const rect = el.getBoundingClientRect();
 			const offset = (e.clientX - (rect.left + rect.width / 2)) / slot;
-			animateTo(Math.round(pos + offset));
+			const target = Math.round(pos + offset);
+			if (target === Math.round(pos) && onactivate) onactivate();
+			else animateTo(target);
 			return;
 		}
 
@@ -159,6 +167,11 @@
 
 	/* ---------- keyboard ---------- */
 	function onKeyDown(e: KeyboardEvent) {
+		if (e.key === 'Enter' && onactivate) {
+			e.preventDefault();
+			onactivate();
+			return;
+		}
 		if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
 		e.preventDefault();
 		unlockFeedback();
@@ -193,7 +206,7 @@
 	bind:this={el}
 	role="slider"
 	tabindex="0"
-	aria-label="Wallet"
+	aria-label={label}
 	aria-valuemin={0}
 	aria-valuemax={items.length - 1}
 	aria-valuenow={selected}

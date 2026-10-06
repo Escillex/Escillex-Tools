@@ -24,5 +24,12 @@ export const tools: ToolInfo[] = [
 			transactions: financeDb.transactions as unknown as Table<SyncFields, string>,
 			budgets: financeDb.budgets as unknown as Table<SyncFields, string>
 		}
+	},
+	{
+		id: 'reader',
+		name: 'Reader',
+		href: '/md',
+		// Files live on disk, not in the app, so there's nothing to sync.
+		syncTables: {}
 	}
 ];

@@ -9,7 +9,7 @@
 	import ColorField from '#lib/ui/ColorField.svelte';
 	import { tick, unlockFeedback } from '#lib/ui/feedback.ts';
 	import { contrast, textOn } from '#lib/ui/color.ts';
-	import { FONTS, SWATCHES, appPalette, theme, type FontId } from './theme.svelte';
+	import { FONTS, READ_FONTS, SWATCHES, appPalette, theme, type FontId, type ReadFontId } from './theme.svelte';
 	import { CURRENCIES, currencyName, formatMoney, money, setCurrency, type Currency } from './currency.svelte';
 
 	let { onclose }: { onclose: () => void } = $props();
@@ -18,6 +18,12 @@
 		unlockFeedback();
 		if (id !== theme.font) tick();
 		theme.set({ font: id });
+	}
+
+	function pickRead(id: ReadFontId) {
+		unlockFeedback();
+		if (id !== theme.read) tick();
+		theme.set({ read: id });
 	}
 
 	/** Below 3:1 big text starts getting hard to read. */
@@ -65,6 +71,24 @@
 				onclick={() => pickFont(id as FontId)}
 			>
 				<span class:tag={theme.font === id}>{f.name} 1,234</span>
+			</button>
+		{/each}
+	</div>
+
+	<h3 class="display">Reading font</h3>
+	<div class="fonts" role="radiogroup" aria-label="Reading font">
+		{#each Object.entries(READ_FONTS) as [id, f] (id)}
+			<button
+				type="button"
+				role="radio"
+				aria-checked={theme.read === id}
+				class="font read-font"
+				style:font-family="{f.family}, system-ui, sans-serif"
+				onclick={() => pickRead(id as ReadFontId)}
+				onpointerenter={() => f.load()}
+			>
+				<span class:tag={theme.read === id}>{f.name}</span>
+				<span class="sample">Grocery run came in under budget.</span>
 			</button>
 		{/each}
 	</div>
@@ -122,6 +146,20 @@
 		text-transform: uppercase;
 		padding: 8px 2px;
 		cursor: pointer;
+	}
+	.read-font {
+		display: grid;
+		gap: 2px;
+		text-transform: none;
+		font-size: 1.05rem;
+		font-style: normal;
+	}
+	.read-font span:first-child {
+		font-weight: 700;
+		justify-self: start;
+	}
+	.sample {
+		color: var(--dim);
 	}
 	.preview {
 		display: flex;

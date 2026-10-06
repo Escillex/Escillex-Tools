@@ -8,11 +8,14 @@ node_modules
 /.svelte-kit
 /build
 
-# Local editor/assistant settings
+# Local editor/assistant settings (Claude Code, skills, superpowers)
 .claude/
 CLAUDE.md
 docs/agents/
 docs/superpowers/
+.superpowers/
+.agents/
+skills-lock.json
 
 # OS
 .DS_Store

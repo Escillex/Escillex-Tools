@@ -5,6 +5,7 @@
 	import { install } from '#lib/core/install.svelte.ts';
 	import { update } from '#lib/core/update.svelte.ts';
 	import { tick, unlockFeedback } from '#lib/ui/feedback.ts';
+	import Wordmark from '#lib/ui/Wordmark.svelte';
 	import Sheet from '#lib/ui/Sheet.svelte';
 	import SyncPanel from '#lib/core/sync/SyncPanel.svelte';
 	import SettingsPanel from '#lib/core/SettingsPanel.svelte';
@@ -52,8 +53,11 @@
 	const canInstall = $derived(!install.installed && (install.canPrompt || install.needsManualSteps));
 </script>
 
+<!-- Tool pages set their own title; coming back here has to set it again. -->
+<svelte:head><title>Tools</title></svelte:head>
+
 <div class="screen">
-	<p class="label top">Escillex Tools</p>
+	<Wordmark />
 
 	<nav>
 		{#each tools as tool (tool.id)}
@@ -110,11 +114,6 @@
 		padding: calc(18px + env(safe-area-inset-top, 0px)) 16px calc(18px + env(safe-area-inset-bottom, 0px));
 		max-width: 620px;
 		margin: 0 auto;
-	}
-	.top {
-		margin: 0;
-		padding-bottom: 8px;
-		border-bottom: 2px solid var(--line);
 	}
 	nav {
 		flex: 1;
