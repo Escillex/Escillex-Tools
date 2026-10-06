@@ -33,9 +33,9 @@ export interface Plan {
 }
 
 export const FLING_MS = 110;
-export const BANDS_MS = 190;
-export const CARD_MS = 120;
-export const REVEAL_FORWARD_MS = 240;
+export const BANDS_MS = 260; // three bands, 60ms apart, 140ms each
+export const CARD_MS = 220; // long enough to read as a hit, not a strobe
+export const REVEAL_FORWARD_MS = 280;
 export const REVEAL_SHORT_MS = 200;
 
 export const depth = (path = '/') => path.split('/').filter(Boolean).length;
