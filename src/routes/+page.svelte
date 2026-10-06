@@ -1,15 +1,21 @@
 <script lang="ts">
-	// The launcher: tools.escillex.com opens here. One big word per tool,
-	// and a list of app-wide actions along the bottom.
+	// The launcher: tools.escillex.com opens here. A clock dial of tools
+	// (turn to choose, tap or pull to open) and the app-wide keys along the bottom.
+	import { goto } from '$app/navigation';
 	import { tools } from '#lib/apps.ts';
 	import { install } from '#lib/core/install.svelte.ts';
 	import { update } from '#lib/core/update.svelte.ts';
 	import { tick, unlockFeedback } from '#lib/ui/feedback.ts';
-	import Wordmark from '#lib/ui/Wordmark.svelte';
 	import Sheet from '#lib/ui/Sheet.svelte';
 	import SyncPanel from '#lib/core/sync/SyncPanel.svelte';
 	import SettingsPanel from '#lib/core/SettingsPanel.svelte';
 	import BackupPanel from '#lib/core/backup/BackupPanel.svelte';
+	import { loadCode, sync } from '#lib/core/sync/session.svelte.ts';
+	import Dial from '#lib/launcher/Dial.svelte';
+	import type { DialTool } from '#lib/launcher/dial.ts';
+	import { safeStatus } from '#lib/launcher/status.ts';
+	import { curtain } from '#lib/ui/transition/state.svelte.ts';
+	import { toolNumber } from '#lib/ui/transition/plan.ts';
 	import { onMount } from 'svelte';
 
 	let open = $state<'sync' | 'settings' | 'backup' | 'install' | null>(null);
@@ -47,41 +53,75 @@
 	}
 
 	const updateLabel = $derived(
-		{ idle: 'Update', checking: 'Checking…', ready: 'Restart to update', latest: 'Up to date', offline: 'Offline' }[update.status]
+		{ idle: 'Update', checking: 'Checking', ready: 'Restart', latest: 'Latest', offline: 'Offline' }[update.status]
 	);
 
 	const canInstall = $derived(!install.installed && (install.canPrompt || install.needsManualSteps));
+
+	/* ---------- the dial ---------- */
+
+	const store = {
+		get(key: string) {
+			try {
+				return localStorage.getItem(key);
+			} catch {
+				return null;
+			}
+		},
+		set(key: string, value: string) {
+			try {
+				localStorage.setItem(key, value);
+			} catch {
+				/* private mode: just not remembered */
+			}
+		}
+	};
+
+	// Each tool's live line, read once from this device when the launcher opens.
+	let lines = $state<Record<string, string | null>>({});
+	onMount(() => {
+		loadCode();
+		Promise.all(tools.map(async (t) => [t.id, await safeStatus(t.status)] as const)).then((all) => (lines = Object.fromEntries(all)));
+	});
+
+	const dialTools = $derived<DialTool[]>(tools.map((t) => ({ id: t.id, name: t.name, href: t.href, line: lines[t.id] ?? null })));
+	let selected = $state(Math.max(0, tools.findIndex((t) => t.id === store.get('launcher:last'))));
+	const hinted = store.get('launcher:hinted') === '1';
+
+	function launch(i: number) {
+		const t = dialTools[i];
+		store.set('launcher:last', t.id);
+		store.set('launcher:hinted', '1');
+		curtain.arm({ title: t.name, number: toolNumber(i), line: t.line, fling: true, at: performance.now() });
+		goto(t.href);
+	}
+
+	const today = new Date()
+		.toLocaleDateString(undefined, { weekday: 'short', day: '2-digit', month: 'short' })
+		.replace(/,/g, '')
+		.toUpperCase();
 </script>
 
 <!-- Tool pages set their own title; coming back here has to set it again. -->
 <svelte:head><title>Tools</title></svelte:head>
 
 <div class="screen">
-	<Wordmark />
+	<header class="strip">
+		<span class="label">{today} · {tools.length} {tools.length === 1 ? 'tool' : 'tools'}</span>
+		{#if sync.paired}<span class="label">Paired</span>{/if}
+	</header>
+	{#if !hinted}<p class="label hint">Turn ▲▼ · tap or pull › to open</p>{/if}
 
-	<nav>
-		{#each tools as tool (tool.id)}
-			<a class="display tool" href={tool.href} onpointerdown={() => (unlockFeedback(), tick())}>{tool.name}</a>
-		{/each}
-	</nav>
+	<!-- The dial bleeds past the page gutter to the screen edges. -->
+	<div class="dial-wrap"><Dial tools={dialTools} bind:selected onlaunch={launch} /></div>
 
-	<div class="actions">
-		<button type="button" class="row" onclick={() => show('sync')}>
-			<span class="display">Sync</span><span class="circle" aria-hidden="true">→</span>
-		</button>
-		<button type="button" class="row" onclick={() => show('backup')}>
-			<span class="display">Backup</span><span class="circle" aria-hidden="true">→</span>
-		</button>
-		<button type="button" class="row" onclick={() => show('settings')}>
-			<span class="display">Settings</span><span class="circle" aria-hidden="true">→</span>
-		</button>
-		<button type="button" class="row" onclick={onUpdate} aria-live="polite">
-			<span class="display">{updateLabel}</span><span class="circle" aria-hidden="true">↻</span>
-		</button>
+	<div class="keys">
+		<button type="button" class="key" onclick={() => show('sync')}><span class="glyph">→</span><span class="display">Sync</span></button>
+		<button type="button" class="key" onclick={() => show('backup')}><span class="glyph">→</span><span class="display">Backup</span></button>
+		<button type="button" class="key" onclick={() => show('settings')}><span class="glyph">→</span><span class="display">Settings</span></button>
+		<button type="button" class="key" onclick={onUpdate} aria-live="polite"><span class="glyph">↻</span><span class="display">{updateLabel}</span></button>
 		{#if canInstall}
-			<button type="button" class="row" onclick={onInstall}>
-				<span class="display">Install app</span><span class="circle" aria-hidden="true">↓</span>
-			</button>
+			<button type="button" class="key" onclick={onInstall}><span class="glyph">↓</span><span class="display">Install</span></button>
 		{/if}
 	</div>
 </div>
@@ -111,45 +151,77 @@
 		box-sizing: border-box;
 		display: flex;
 		flex-direction: column;
+		gap: 12px;
 		padding: calc(18px + env(safe-area-inset-top, 0px)) 16px calc(18px + env(safe-area-inset-bottom, 0px));
-		max-width: 620px;
-		margin: 0 auto;
+		/* The dial runs off the left edge, so the screen itself isn't capped; only the strip and keys are. */
+		overflow: hidden;
 	}
-	nav {
+	.strip,
+	.hint,
+	.keys {
+		width: 100%;
+		max-width: 620px;
+		margin-inline: auto;
+	}
+	.dial-wrap {
 		flex: 1;
 		display: flex;
-		flex-direction: column;
-		align-items: center;
-		justify-content: center;
-		gap: 0.1em;
+		margin-inline: -16px;
 	}
-	.tool {
-		color: var(--ink);
-		text-decoration: none;
-		font-size: min(calc(11rem / var(--font-wide)), calc(30vw / var(--font-wide)));
-		transition: transform 120ms;
-	}
-	.tool:active {
-		transform: scale(0.96);
-	}
-	.actions {
-		display: grid;
-	}
-	.row {
+	.strip {
 		display: flex;
 		justify-content: space-between;
-		align-items: center;
-		background: none;
-		border: 0;
-		border-top: 2px solid var(--line);
+		padding-bottom: 8px;
+		border-bottom: 2px solid var(--line);
+	}
+	.hint {
+		margin-top: -4px;
+		margin-bottom: 0;
+	}
+	.keys {
+		display: grid;
+		grid-auto-flow: column;
+		grid-auto-columns: 1fr;
+		gap: 8px;
+		align-items: end;
+		height: 64px;
+	}
+	/* A keycap: the thick bottom border is its depth. Pressing sinks it by that depth. */
+	.key {
+		display: flex;
+		flex-direction: column;
+		justify-content: space-between;
+		align-items: flex-start;
+		height: 58px;
+		box-sizing: border-box;
+		padding: 6px 8px 6px 10px;
+		background: var(--bg);
 		color: var(--ink);
-		padding: 10px 0;
-		font-size: calc(1.9rem / var(--font-wide));
+		border: 2px solid var(--ink);
+		border-bottom-width: 8px;
 		cursor: pointer;
 		text-align: left;
+		transition:
+			height 60ms,
+			border-bottom-width 60ms;
 	}
-	.row:active .circle {
+	.key:active {
+		height: 52px;
+		border-bottom-width: 2px;
 		background: var(--ink);
+		color: var(--bg);
+	}
+	.key .display {
+		font-size: calc(1.1rem / var(--font-wide));
+		white-space: nowrap;
+	}
+	.glyph {
+		font-family: var(--font-mono);
+		font-style: normal;
+		font-size: 0.75rem;
+		color: var(--dim);
+	}
+	.key:active .glyph {
 		color: var(--bg);
 	}
 	ol {

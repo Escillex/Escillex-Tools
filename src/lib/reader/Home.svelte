@@ -50,7 +50,7 @@
 		return [...bare].length > 24 ? [...bare].slice(0, 23).join('') + '…' : bare;
 	}
 
-	// More than two recent files: a dial like the wallets. One or two: just show them.
+	// Recent files: always a dial like the wallets, even with one (it just repeats).
 	let selected = $state(0);
 	const items = $derived(recent.current.map((r) => ({ id: r.id, label: title(r.name) })));
 	// The list changed (a file opened, removed): start again from the newest. The {#key} below restarts the dial too,
@@ -79,7 +79,7 @@
 	</div>
 	{#if error}<p class="error">{error}</p>{/if}
 
-	{#if recent.current.length > 2 && current}
+	{#if current}
 		<section class="recent" aria-label="Recent files">
 			<p class="label">Recent</p>
 			<div class="dial">
@@ -88,13 +88,6 @@
 				{/key}
 			</div>
 			{@render card(current, false)}
-		</section>
-	{:else if recent.current.length}
-		<section class="recent" aria-label="Recent files">
-			<p class="label">Recent</p>
-			{#each recent.current as r (r.id)}
-				{@render card(r, true)}
-			{/each}
 		</section>
 	{/if}
 
@@ -176,8 +169,7 @@
 		border-top: 2px solid var(--line);
 		padding-top: 10px;
 	}
-	.dial + .card,
-	.label + .card {
+	.dial + .card {
 		border-top: 0;
 	}
 	.name {

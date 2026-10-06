@@ -1,7 +1,7 @@
 <script lang="ts">
 	/**
-	 * The rendered document. Table cells in top-level tables are editable
-	 * in place, and checkboxes tick. Each edit is written straight back
+	 * The rendered document. Checkboxes tick in every mode; table cells in
+	 * top-level tables are editable in place in Write mode only. Each edit is written straight back
 	 * into the Markdown through the offsets the renderer leaves on the
 	 * HTML (data-src, data-task).
 	 *
@@ -285,6 +285,8 @@
 				return;
 			}
 		}
+		// READ is for reading: cells only open for editing in WRITE.
+		if (!write) return;
 		const cell = target.closest<HTMLElement>('table[data-src] th, table[data-src] td');
 		if (!cell || cell === editing?.cell) return;
 		// Remember the cell by position: committing the previous cell redraws everything.

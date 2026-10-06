@@ -86,8 +86,9 @@
 	letter-spacing: 0.06em;
 	text-transform: uppercase;
 }
-.md table[data-src] th,
-.md table[data-src] td {
+/* Cells are editable only in Write mode (Viewer adds .write to .md). */
+.md.write table[data-src] th,
+.md.write table[data-src] td {
 	cursor: text;
 }
 .md td.editing,

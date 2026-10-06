@@ -8,28 +8,43 @@
 	import { loadCurrency } from '#lib/core/currency.svelte.ts';
 	import { onNavigate } from '$app/navigation';
 	import { dev } from '$app/env';
+	import { tools } from '#lib/apps.ts';
+	import Curtain from '#lib/ui/transition/Curtain.svelte';
+	import { curtain } from '#lib/ui/transition/state.svelte.ts';
+	import { planFor } from '#lib/ui/transition/plan.ts';
 	import type { LayoutProps } from './$types';
 
 	let { children }: LayoutProps = $props();
 
 	/*
-	 * Push/pop page animation. The browser screenshots the old page, we swap
-	 * in the new one, and CSS (brutal.css) slides between the two. Going to
-	 * a deeper path (/wallet → /wallet/manage) pushes forward; shallower pops back.
+	 * Every navigation plays the page curtain (lib/ui/transition): it
+	 * covers the screen, the page swaps underneath, then it cracks open.
+	 * iOS's own swipe-back already animates, so that one is left alone.
 	 */
-	onNavigate((navigation) => {
-		if (!document.startViewTransition) return; // older browsers: just switch pages
-		const depth = (path = '/') => path.split('/').filter(Boolean).length;
-		const from = depth(navigation.from?.url.pathname);
-		const to = depth(navigation.to?.url.pathname);
-		document.documentElement.dataset.nav = to > from ? 'forward' : to < from ? 'back' : 'same';
+	let uaAnimated = false;
+	$effect(() => {
+		const onPop = (e: PopStateEvent) => {
+			uaAnimated = !!(e as PopStateEvent & { hasUAVisualTransition?: boolean }).hasUAVisualTransition;
+		};
+		addEventListener('popstate', onPop);
+		return () => removeEventListener('popstate', onPop);
+	});
 
-		return new Promise((resolve) => {
-			document.startViewTransition(async () => {
-				resolve();
-				await navigation.complete;
-			});
+	onNavigate((navigation) => {
+		const plan = planFor({
+			from: navigation.from?.url.pathname,
+			to: navigation.to?.url.pathname,
+			launch: curtain.take(),
+			tools,
+			reduced: matchMedia('(prefers-reduced-motion: reduce)').matches,
+			uaAnimated: navigation.type === 'popstate' && uaAnimated,
+			now: performance.now()
 		});
+		uaAnimated = false;
+		if (!plan) return;
+		const open = () => curtain.reveal();
+		navigation.complete.then(open, open);
+		return curtain.cover(plan);
 	});
 
 	// Start listening right away: the browser may offer installation before
@@ -58,3 +73,5 @@
 {:else}
 	{@render children()}
 {/if}
+
+<Curtain />
