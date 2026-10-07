@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { EDGE, LOCK_PX, Once, PULL_THRESHOLD, PointerOwner, STEP_DEG, angleAt, geometry, lockDirection, pulledPast, releaseAction, rubber, spoke, ticks, wrap } from './dial';
+import { EDGE, LOCK_PX, Once, PULL_THRESHOLD, PointerOwner, STEP_DEG, angleAt, fitScale, geometry, lockDirection, pulledPast, releaseAction, rubber, spoke, ticks, wrap } from './dial';
 
 describe('wrap', () => {
 	it('wraps any integer into 0..n-1, negatives too', () => {
@@ -124,5 +124,19 @@ describe('Once', () => {
 		const o = new Once();
 		expect(o.claim()).toBe(true);
 		expect(o.claim()).toBe(false);
+	});
+});
+
+describe('fitScale', () => {
+	it('leaves a name that fits at full size', () => {
+		expect(fitScale(218, 200)).toBe(1);
+		expect(fitScale(218, 218)).toBe(1);
+	});
+	it('shrinks a long name just enough to fit', () => {
+		expect(fitScale(218, 436)).toBe(0.5);
+	});
+	it('does nothing before anything is measured', () => {
+		expect(fitScale(218, 0)).toBe(1);
+		expect(fitScale(0, 300)).toBe(1);
 	});
 });

@@ -1,4 +1,4 @@
-<script lang="ts">
+<script lang="ts" generics="T extends { id: string; label: string }">
 	/**
 	 * An endless horizontal dial of labels. Drag, fling, scroll, tap a
 	 * label, or use the arrow keys. Ticks once per label that crosses the
@@ -8,8 +8,12 @@
 	 * (…-1, 0, 1, 2…). We draw the few slots around `pos`, and slot v shows
 	 * items[v mod n]. Scrolling forever just keeps moving `pos`.
 	 * The momentum and notch maths live in detent.svelte.ts.
+	 *
+	 * Optional: draw slots yourself (item snippet), a fixed slot width, and
+	 * hold / double-click hooks (BG REMOVE's history dial uses these).
 	 */
-	import { untrack } from 'svelte';
+	import { untrack, type Snippet } from 'svelte';
+	import { HOLD_MS, HOLD_TOLERANCE } from '#lib/bgremove/gesture.ts';
 	import { tick, unlockFeedback } from './feedback';
 	import { Detent } from './detent.svelte';
 
@@ -17,14 +21,30 @@
 		items,
 		selected = $bindable(0),
 		label = 'Wallet',
-		onactivate
+		onactivate,
+		item,
+		slotWidth,
+		ondouble,
+		onhold,
+		onholdmove,
+		onholdend
 	}: {
-		items: { id: string; label: string }[];
+		items: T[];
 		selected?: number;
 		/** What the dial picks, for screen readers. */
 		label?: string;
 		/** Tapping the label that's already centred (or Enter): "open this one". */
-		onactivate?: () => void;
+		onactivate?: (e: PointerEvent | KeyboardEvent) => void;
+		/** Draw each slot yourself; the boolean is "this one is centred". */
+		item?: Snippet<[T, boolean]>;
+		/** Fixed distance between slots (skips measuring label text). */
+		slotWidth?: number;
+		/** Double-click anywhere on the dial. */
+		ondouble?: () => void;
+		/** Press and hold without moving: the pressed slot is centred first. Then vertical moves until release. */
+		onhold?: () => void;
+		onholdmove?: (dy: number) => void;
+		onholdend?: (dy: number) => void;
 	} = $props();
 
 	/*
@@ -35,6 +55,7 @@
 	let slot = $state(118);
 	let measurer: HTMLDivElement;
 	function measure() {
+		if (slotWidth) return void (slot = slotWidth);
 		if (!measurer) return;
 		const spans = [...measurer.children] as HTMLElement[];
 		const widest = Math.max(0, ...spans.map((s) => s.offsetWidth));
@@ -83,40 +104,70 @@
 		return out;
 	});
 
-	/* ---------- dragging ---------- */
+	/* ---------- dragging (and holding) ---------- */
 	let dragging = false;
+	let holding = false;
+	let holdTimer: ReturnType<typeof setTimeout> | undefined;
 	let startX = 0;
+	let startY = 0;
 	let startPos = 0;
 	let moved = 0;
+	let movedY = 0;
+
+	/** Which slot (as a position on the number line) a pointer x is over. */
+	function slotAt(clientX: number) {
+		const rect = el.getBoundingClientRect();
+		return Math.round(detent.pos + (clientX - (rect.left + rect.width / 2)) / slot);
+	}
 
 	function onPointerDown(e: PointerEvent) {
+		// Buttons inside a custom slot handle their own clicks.
+		if ((e.target as Element).closest('[data-loop-ignore]')) return;
 		e.preventDefault(); // don't steal focus (keeps a phone keyboard open in the entry screen)
 		unlockFeedback();
 		dragging = true;
+		holding = false;
 		startX = e.clientX;
+		startY = e.clientY;
 		startPos = detent.pos;
 		moved = 0;
+		movedY = 0;
 		detent.grab();
 		el.setPointerCapture(e.pointerId);
+		if (onhold) {
+			clearTimeout(holdTimer);
+			holdTimer = setTimeout(() => {
+				if (!dragging || moved > HOLD_TOLERANCE || movedY > HOLD_TOLERANCE) return;
+				holding = true;
+				detent.animateTo(slotAt(startX));
+				onhold();
+			}, HOLD_MS);
+		}
 	}
 
 	function onPointerMove(e: PointerEvent) {
 		if (!dragging) return;
+		if (holding) return onholdmove?.(e.clientY - startY);
 		const dx = e.clientX - startX;
 		moved = Math.max(moved, Math.abs(dx));
+		movedY = Math.max(movedY, Math.abs(e.clientY - startY));
 		detent.moveTo(startPos - dx / slot);
 	}
 
 	function onPointerUp(e: PointerEvent) {
 		if (!dragging) return;
 		dragging = false;
+		clearTimeout(holdTimer);
+		if (holding) {
+			holding = false;
+			onholdend?.(e.clientY - startY);
+			return;
+		}
 
 		// A tap (barely moved): jump to the label that was tapped.
 		if (moved < 6) {
-			const rect = el.getBoundingClientRect();
-			const offset = (e.clientX - (rect.left + rect.width / 2)) / slot;
-			const target = Math.round(detent.pos + offset);
-			if (target === detent.rounded && onactivate) onactivate();
+			const target = slotAt(e.clientX);
+			if (target === detent.rounded && onactivate) onactivate(e);
 			else detent.animateTo(target);
 			return;
 		}
@@ -141,7 +192,7 @@
 	function onKeyDown(e: KeyboardEvent) {
 		if (e.key === 'Enter' && onactivate) {
 			e.preventDefault();
-			onactivate();
+			onactivate(e);
 			return;
 		}
 		if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
@@ -166,6 +217,7 @@
 		el.addEventListener('wheel', onWheel, { passive: false });
 		return () => {
 			el.removeEventListener('wheel', onWheel);
+			clearTimeout(holdTimer);
 			detent.stop();
 		};
 	});
@@ -186,6 +238,7 @@
 	onpointerup={onPointerUp}
 	onpointercancel={onPointerUp}
 	onkeydown={onKeyDown}
+	ondblclick={() => ondouble?.()}
 >
 	<!-- Invisible copies of every name, used only to measure their widths. -->
 	<div class="measurer display" bind:this={measurer} aria-hidden="true">
@@ -197,8 +250,12 @@
 		<!-- The tag fades in over the last half-step before a label reaches the center. -->
 		{@const t = centered ? 1 - Math.abs(s.x / slot) * 2 : 0}
 		<span class="slot display" style:transform="translateX(calc(-50% + {s.x}px))" style:opacity={s.opacity}>
-			<!-- Text switches to the tag's ink only once the tag is solid enough to read on. -->
-			<span class:tag={centered} style:--t={t} style:color={t > 0.5 ? 'var(--accent-ink)' : 'var(--ink)'}>{s.item.label}</span>
+			{#if item}
+				{@render item(s.item, centered)}
+			{:else}
+				<!-- Text switches to the tag's ink only once the tag is solid enough to read on. -->
+				<span class:tag={centered} style:--t={t} style:color={t > 0.5 ? 'var(--accent-ink)' : 'var(--ink)'}>{s.item.label}</span>
+			{/if}
 		</span>
 	{/each}
 </div>
@@ -206,7 +263,7 @@
 <style>
 	.loop {
 		position: relative;
-		height: 1.6em;
+		height: var(--loop-h, 1.6em);
 		width: 100%;
 		overflow: hidden;
 		touch-action: none;
@@ -225,7 +282,7 @@
 		left: 50%;
 		top: 0;
 		white-space: nowrap;
-		line-height: 1.6em;
+		line-height: var(--loop-h, 1.6em);
 		will-change: transform;
 	}
 	.measurer {

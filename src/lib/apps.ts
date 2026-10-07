@@ -36,5 +36,13 @@ export const tools: ToolInfo[] = [
 		description: 'OPEN · READ · EDIT FILES',
 		// Files live on disk, not in the app, so there's nothing to sync.
 		syncTables: {}
+	},
+	{
+		id: 'bgremove',
+		name: 'BG REMOVE',
+		href: '/bg-remove',
+		description: 'CUT OUT ANY PHOTO',
+		// Cutouts can be gigabytes; they stay on each device (a dedicated transfer may come later).
+		syncTables: {}
 	}
 ];

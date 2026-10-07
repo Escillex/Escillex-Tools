@@ -4,11 +4,12 @@
 	"version": "0.0.1",
 	"type": "module",
 	"scripts": {
-		"dev": "vite dev",
-		"build": "vite build && node scripts/wrap-worker.js",
+		"ort": "node scripts/ort-runtime.js",
+		"dev": "npm run ort && vite dev",
+		"build": "npm run ort && vite build && node scripts/wrap-worker.js",
 		"preview": "vite preview",
 		"prepare": "svelte-kit sync || echo ''",
-		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+		"check": "npm run ort && svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"test": "vitest run"
 	},
@@ -40,6 +41,7 @@
 		"@fontsource/barlow": "^5.3.0",
 		"@fontsource/barlow-condensed": "^5.3.0",
 		"@fontsource/ibm-plex-sans": "^5.3.0",
+		"@huggingface/transformers": "^4.3.1",
 		"dexie": "^4.4.6",
 		"jsqr": "^1.4.0",
 		"markdown-it": "^15.0.2",

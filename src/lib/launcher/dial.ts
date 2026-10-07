@@ -31,6 +31,13 @@ export interface DialTool {
 
 export const wrap = (i: number, n: number) => (n <= 0 ? 0 : ((i % n) + n) % n);
 
+/**
+ * How much to shrink the slab's name so it fits beside the chevrons:
+ * 1 when it already fits, less for long names (Yellowpad on a phone).
+ * 1 until both widths are measured.
+ */
+export const fitScale = (available: number, natural: number) => (available > 0 && natural > available ? available / natural : 1);
+
 export function geometry(w: number, h: number): Geometry {
 	const r = Math.max(310, Math.round(h * 0.42));
 	return { r, cx: EDGE - r, cy: Math.round(h / 2) };

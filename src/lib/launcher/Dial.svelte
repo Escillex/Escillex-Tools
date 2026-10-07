@@ -19,6 +19,7 @@
 		PointerOwner,
 		STEP_DEG,
 		angleAt,
+		fitScale,
 		geometry,
 		lockDirection,
 		pulledPast,
@@ -86,6 +87,25 @@
 	const ring = $derived(ticks(detent.pos));
 
 	/* ---------- the slab ---------- */
+
+	// Long names (Yellowpad) shrink to fit beside the chevrons. An invisible copy
+	// at full size gives the natural width; the real name's box gives the room.
+	let nameBox = $state<HTMLSpanElement>();
+	let nameFull = $state<HTMLSpanElement>();
+	let fit = $state(1);
+	function refit() {
+		if (nameBox && nameFull) fit = fitScale(nameBox.clientWidth, nameFull.scrollWidth);
+	}
+	$effect(() => {
+		void current?.name;
+		if (!nameBox) return;
+		refit();
+		document.fonts?.ready.then(refit);
+		const ro = new ResizeObserver(refit);
+		ro.observe(nameBox);
+		return () => ro.disconnect();
+	});
+
 	let pull = $state(0); // px the slab is pulled right
 	let slab = $state<'idle' | 'drag' | 'back' | 'auto' | 'fling'>('idle');
 	let pressed = $state(false);
@@ -275,7 +295,8 @@
 	{#if current}
 		<div class="slab {slab}" class:pressed style:left="{g.cx + g.r + 8}px" style:top="{g.cy}px" style:--pull="{pull}px">
 			<span class="num">{toolNumber(wrap(detent.rounded, n))}</span>
-			<span class="name display">{current.name}</span>
+			<span class="name display" bind:this={nameBox} style:--fit={fit}>{current.name}</span>
+			<span class="name display full" bind:this={nameFull} aria-hidden="true">{current.name}</span>
 			{#if current.line}<span class="line">{current.line}</span>{/if}
 			<span class="chev display" aria-hidden="true"><b>›</b><b>›</b><b>›</b></span>
 		</div>
@@ -425,14 +446,22 @@
 		transition: transform 110ms cubic-bezier(0.7, 0, 0.84, 0);
 		transform: translate(130vw, -50%) rotate(-6deg);
 	}
-	/* Sized to fit a 6-letter name beside the chevrons on a phone; longer names clip. */
+	/* Full size fits a 6-letter name beside the chevrons on a phone; --fit shrinks longer ones. */
 	.name {
-		font-size: min(calc(4.6rem / var(--font-wide)), 19vw);
+		font-size: calc(min(calc(4.6rem / var(--font-wide)), 19vw) * var(--fit, 1));
 		white-space: nowrap;
 		overflow: hidden;
 		max-width: calc(100% - 6rem);
 		/* Room for the italic's overhang, which overflow would otherwise clip. */
 		padding-right: 0.12em;
+	}
+	/* The measuring copy: full size, never clipped, never seen. */
+	.name.full {
+		position: absolute;
+		visibility: hidden;
+		pointer-events: none;
+		max-width: none;
+		overflow: visible;
 	}
 	.num,
 	.line {
