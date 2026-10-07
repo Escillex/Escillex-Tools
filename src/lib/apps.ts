@@ -5,7 +5,6 @@
 import type { Table } from 'dexie';
 import type { SyncFields } from '#lib/finance/db.ts';
 import { db as financeDb } from '#lib/finance/db.ts';
-import { readerStatus, walletStatus } from '#lib/launcher/status.ts';
 
 export interface ToolInfo {
 	id: string;
@@ -13,8 +12,8 @@ export interface ToolInfo {
 	href: string;
 	/** The tables "Sync all" copies between devices. Every record needs id/updatedAt/deleted. */
 	syncTables: Record<string, Table<SyncFields, string>>;
-	/** One short line for the launcher dial, read from this device only. null = nothing to say. */
-	status?: () => Promise<string | null>;
+	/** One short line under the name on the launcher dial: what the tool is for. */
+	description: string;
 }
 
 export const tools: ToolInfo[] = [
@@ -22,7 +21,7 @@ export const tools: ToolInfo[] = [
 		id: 'finance',
 		name: 'Wallet',
 		href: '/wallet',
-		status: walletStatus,
+		description: 'DAILY SPENDING · BUDGETS',
 		syncTables: {
 			wallets: financeDb.wallets as unknown as Table<SyncFields, string>,
 			transactions: financeDb.transactions as unknown as Table<SyncFields, string>,
@@ -30,10 +29,11 @@ export const tools: ToolInfo[] = [
 		}
 	},
 	{
+		// The id stays 'reader': settings, the recent-files database and the tool theme are stored under it.
 		id: 'reader',
-		name: 'Reader',
-		href: '/md',
-		status: readerStatus,
+		name: 'Yellowpad',
+		href: '/yellowpad',
+		description: 'OPEN · READ · EDIT FILES',
 		// Files live on disk, not in the app, so there's nothing to sync.
 		syncTables: {}
 	}

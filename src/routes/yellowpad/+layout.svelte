@@ -1,5 +1,5 @@
 <script lang="ts">
-	// While the Reader is open, its own look (Reader settings) applies over the global one.
+	// While Yellowpad is open, its own look (Yellowpad settings) applies over the global one.
 	import { enterTool, leaveTool } from '#lib/core/theme.svelte.ts';
 	import type { LayoutProps } from './$types';
 

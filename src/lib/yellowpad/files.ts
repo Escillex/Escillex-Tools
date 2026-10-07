@@ -49,7 +49,7 @@ let accessBlocked = (() => {
 	}
 })();
 
-/** "Open files as copies" (Reader settings). Per browser, never synced: it's about what this browser allows. */
+/** "Open files as copies" (Yellowpad settings). Per browser, never synced: it's about what this browser allows. */
 export const openAsCopies = () => accessBlocked;
 export function setOpenAsCopies(on: boolean): void {
 	accessBlocked = on;
@@ -64,7 +64,7 @@ export function setOpenAsCopies(on: boolean): void {
 /** The error a browser gives when it won't let the page read a file it just picked. */
 export const isAccessBlocked = (e: unknown) => e instanceof DOMException && e.name === 'NotAllowedError';
 
-/** Thrown once, the first time reading is refused: the Reader then offers to open a copy (a plain file input). */
+/** Thrown once, the first time reading is refused: Yellowpad then offers to open a copy (a plain file input). */
 export class FileAccessBlocked extends Error {
 	constructor() {
 		super("This browser won't let the app read files directly.");

@@ -1,5 +1,5 @@
 /**
- * The Reader's own database: just the recent files list. File handles
+ * Yellowpad's own database: just the recent files list. File handles
  * can be stored in IndexedDB, so a file can be reopened later without a
  * picker (the browser may ask for permission again). Never synced: a
  * handle only means something on this device.

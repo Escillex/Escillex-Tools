@@ -13,7 +13,6 @@
 	import { loadCode, sync } from '#lib/core/sync/session.svelte.ts';
 	import Dial from '#lib/launcher/Dial.svelte';
 	import type { DialTool } from '#lib/launcher/dial.ts';
-	import { safeStatus } from '#lib/launcher/status.ts';
 	import { curtain } from '#lib/ui/transition/state.svelte.ts';
 	import { toolNumber } from '#lib/ui/transition/plan.ts';
 	import { onMount } from 'svelte';
@@ -77,14 +76,9 @@
 		}
 	};
 
-	// Each tool's live line, read once from this device when the launcher opens.
-	let lines = $state<Record<string, string | null>>({});
-	onMount(() => {
-		loadCode();
-		Promise.all(tools.map(async (t) => [t.id, await safeStatus(t.status)] as const)).then((all) => (lines = Object.fromEntries(all)));
-	});
+	onMount(loadCode);
 
-	const dialTools = $derived<DialTool[]>(tools.map((t) => ({ id: t.id, name: t.name, href: t.href, line: lines[t.id] ?? null })));
+	const dialTools: DialTool[] = tools.map((t) => ({ id: t.id, name: t.name, href: t.href, line: t.description }));
 	let selected = $state(Math.max(0, tools.findIndex((t) => t.id === store.get('launcher:last'))));
 	const hinted = store.get('launcher:hinted') === '1';
 

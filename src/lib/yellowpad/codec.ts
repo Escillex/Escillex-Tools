@@ -12,7 +12,7 @@ export interface Decoded {
 	/**
 	 * False when the bytes aren't valid UTF-8 (an old Windows-1252 file, say).
 	 * The text is still shown, with unreadable characters as �, but saving it
-	 * would write those � back over the originals, so the Reader won't save.
+	 * would write those � back over the originals, so Yellowpad won't save.
 	 */
 	utf8: boolean;
 }

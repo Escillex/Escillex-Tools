@@ -1,5 +1,5 @@
 <script lang="ts">
-	/** Reader settings: the default view, and the Reader's own look over the global one. */
+	/** Yellowpad settings: the default view, and Yellowpad's own look over the global one. */
 	import Sheet from '#lib/ui/Sheet.svelte';
 	import ToolLookFields from '#lib/core/ToolLookFields.svelte';
 	import { tick, unlockFeedback } from '#lib/ui/feedback.ts';
@@ -18,7 +18,7 @@
 	}
 </script>
 
-<Sheet title="Reader" {onclose}>
+<Sheet title="Yellowpad" {onclose}>
 	<p class="label">Files open in</p>
 	<div class="modes" role="radiogroup" aria-label="Files open in">
 		{#each MODES as m (m)}

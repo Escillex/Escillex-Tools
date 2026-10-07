@@ -18,7 +18,7 @@
 	<div class="row">
 		<button type="button" class="circle" aria-label="Close file" onclick={onclose}>←</button>
 		<p class="label name" title={name}>{dirty ? '• ' : ''}{name}</p>
-		<button type="button" class="circle" aria-label="Reader settings" onclick={onsettings}>⚙</button>
+		<button type="button" class="circle" aria-label="Yellowpad settings" onclick={onsettings}>⚙</button>
 	</div>
 	<div class="row">
 		<ModeTabs bind:mode {wide} />

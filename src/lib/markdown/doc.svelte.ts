@@ -3,7 +3,7 @@
  * saved, and undo for edits made in Read mode (table cells, checkboxes).
  * Typing in the raw editor uses the textarea's own undo instead.
  *
- * It doesn't know where the text lives; the Reader saves it to a file,
+ * It doesn't know where the text lives; Yellowpad saves it to a file,
  * Notes (later) to the database.
  */
 const MAX_UNDO = 100;

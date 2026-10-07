@@ -1,19 +1,19 @@
 <script lang="ts">
 	/*
-	 * The Reader. Double-clicking a .md file in Explorer opens the installed
+	 * Yellowpad. Double-clicking a .md file in Explorer opens the installed
 	 * app here (file_handlers in the manifest, one window per file) and the
 	 * browser hands us the file through launchQueue.
 	 */
 	import { onMount } from 'svelte';
-	import Home from '#lib/reader/Home.svelte';
-	import TopBar from '#lib/reader/TopBar.svelte';
-	import SaveControl from '#lib/reader/SaveControl.svelte';
-	import ReaderSettings from '#lib/reader/ReaderSettings.svelte';
+	import Home from '#lib/yellowpad/Home.svelte';
+	import TopBar from '#lib/yellowpad/TopBar.svelte';
+	import SaveControl from '#lib/yellowpad/SaveControl.svelte';
+	import YellowpadSettings from '#lib/yellowpad/YellowpadSettings.svelte';
 	import MarkdownView from '#lib/markdown/MarkdownView.svelte';
 	import { toMode, wideScreen, type Mode } from '#lib/markdown/ModeTabs.svelte';
 	import { Doc } from '#lib/markdown/doc.svelte.ts';
-	import { Saver, watchEdits } from '#lib/reader/saver.svelte.ts';
-	import { canSaveInPlace, diskModified, downloadCopy, permission, readHandle, writeFile, type OpenFile } from '#lib/reader/files.ts';
+	import { Saver, watchEdits } from '#lib/yellowpad/saver.svelte.ts';
+	import { canSaveInPlace, diskModified, downloadCopy, permission, readHandle, writeFile, type OpenFile } from '#lib/yellowpad/files.ts';
 	import { getSetting, setSetting } from '#lib/core/db.ts';
 	import { tick } from '#lib/ui/feedback.ts';
 
@@ -143,7 +143,7 @@
 
 <svelte:window {onkeydown} {onbeforeunload} onfocus={checkDisk} onblur={() => saver.auto && doc.dirty && saver.save()} />
 <svelte:document onvisibilitychange={onvisibility} />
-<svelte:head><title>{file ? `${doc.dirty ? '• ' : ''}${file.name}` : 'Reader'}</title></svelte:head>
+<svelte:head><title>{file ? `${doc.dirty ? '• ' : ''}${file.name}` : 'Yellowpad'}</title></svelte:head>
 
 <main class="screen" class:wide={mode === 'split' && wide.current}>
 	{#if file}
@@ -179,7 +179,7 @@
 </main>
 
 {#if settings}
-	<ReaderSettings bind:mode onclose={() => (settings = false)} />
+	<YellowpadSettings bind:mode onclose={() => (settings = false)} />
 {/if}
 
 <style>

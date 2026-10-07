@@ -48,9 +48,9 @@
 			]
 		},
 		{
-			"name": "Reader",
-			"short_name": "Reader",
-			"url": "/md",
+			"name": "Yellowpad",
+			"short_name": "Yellowpad",
+			"url": "/yellowpad",
 			"icons": [
 				{
 					"src": "/icon-192.png",
@@ -71,7 +71,7 @@
 			"launch_type": "single-client"
 		},
 		{
-			"action": "/md",
+			"action": "/yellowpad",
 			"accept": {
 				"text/markdown": [
 					".md",

@@ -58,8 +58,8 @@ describe('Curtain', () => {
 
 	it('take() hands over what arm() left, once', () => {
 		const c = new Curtain();
-		c.arm({ title: 'Reader', number: '02', fling: true });
-		expect(c.take()?.title).toBe('Reader');
+		c.arm({ title: 'Yellowpad', number: '02', fling: true });
+		expect(c.take()?.title).toBe('Yellowpad');
 		expect(c.take()).toBeNull();
 	});
 });

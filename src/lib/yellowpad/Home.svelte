@@ -1,5 +1,5 @@
 <script lang="ts">
-	/** The Reader with no file open: open, new, recent files, and how to make it the default .md app. */
+	/** Yellowpad with no file open: open, new, recent files, and how to make it the default .md app. */
 	import { live } from '#lib/live.svelte.ts';
 	import { tick, unlockFeedback } from '#lib/ui/feedback.ts';
 	import { forgetRecent, listRecent } from './db';
@@ -23,7 +23,7 @@
 			const file = await get();
 			if (file) onopen(file);
 		} catch (e) {
-			console.error('Reader: open failed', e);
+			console.error('Yellowpad: open failed', e);
 			if (e instanceof FileAccessBlocked) askCopy = true;
 			else error = `Couldn't open that file. (${e instanceof Error ? `${e.name}: ${e.message}` : String(e)})`;
 		}
@@ -71,7 +71,7 @@
 
 <div class="home">
 	<a class="circle" href="/" aria-label="Back to tools">←</a>
-	<h1 class="display"><span class="title-bar">Reader</span></h1>
+	<h1 class="display"><span class="title-bar">Yellowpad</span></h1>
 
 	<div class="buttons">
 		<button type="button" class="btn btn-primary" onclick={() => go(pickFile)}>Open file</button>
@@ -93,14 +93,14 @@
 
 	{#if showHint}
 		<p class="label hint">
-			Make Reader your default for .md: right-click a .md file → Open with → Choose another app → Reader → Always.
+			Make Yellowpad your default for .md: right-click a .md file → Open with → Choose another app → Yellowpad → Always.
 		</p>
 	{/if}
 </div>
 
 {#if askCopy}
 	<Sheet title="Open a copy" onclose={() => (askCopy = false)}>
-		<p class="sheet-text">This browser won't let the app read files on your computer directly, so the Reader can't save back to them here.</p>
+		<p class="sheet-text">This browser won't let the app read files on your computer directly, so Yellowpad can't save back to them here.</p>
 		<p class="sheet-text">It can open a copy instead: pick the file once more. Saving then downloads it rather than changing the original. You'll only see this once in this browser.</p>
 		<!-- This press is the fresh click the browser needs before it shows another file picker. -->
 		<button
