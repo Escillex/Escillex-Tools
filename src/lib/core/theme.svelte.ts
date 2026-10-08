@@ -26,15 +26,16 @@ export const SWATCHES = {
 };
 
 /**
+ * `file`: the family's name in its font files (see offline.ts).
  * `wide`: how wide the font's letters are compared to Barlow (1). Sizes
  * are divided by it (var(--font-wide)), so a wide font gets smaller text
  * and every layout takes the same room whichever font you pick.
  */
 export const FONTS = {
-	barlow: { name: 'Barlow', family: "'Barlow Condensed'", weight: 900, style: 'italic', bodyWeight: 600, wide: 1 },
-	shoulders: { name: 'Big Shoulders', family: "'Big Shoulders Display Variable'", weight: 900, style: 'normal', bodyWeight: 600, wide: 1 },
-	archivo: { name: 'Archivo', family: "'Archivo Black'", weight: 400, style: 'normal', bodyWeight: 400, wide: 1.45 },
-	anton: { name: 'Anton', family: "'Anton'", weight: 400, style: 'normal', bodyWeight: 400, wide: 1.1 }
+	barlow: { name: 'Barlow', family: "'Barlow Condensed'", file: 'barlow-condensed', weight: 900, style: 'italic', bodyWeight: 600, wide: 1 },
+	shoulders: { name: 'Big Shoulders', family: "'Big Shoulders Display Variable'", file: 'big-shoulders-display', weight: 900, style: 'normal', bodyWeight: 600, wide: 1 },
+	archivo: { name: 'Archivo', family: "'Archivo Black'", file: 'archivo-black', weight: 400, style: 'normal', bodyWeight: 400, wide: 1.45 },
+	anton: { name: 'Anton', family: "'Anton'", file: 'anton', weight: 400, style: 'normal', bodyWeight: 400, wide: 1.1 }
 } as const;
 export type FontId = keyof typeof FONTS;
 
@@ -44,26 +45,29 @@ export type FontId = keyof typeof FONTS;
  * only when picked, so the app doesn't download all seven.
  */
 export const READ_FONTS = {
-	space: { name: 'Space Grotesk', family: "'Space Grotesk Variable'", load: () => import('@fontsource-variable/space-grotesk') },
-	archivo: { name: 'Archivo', family: "'Archivo Variable'", load: () => import('@fontsource-variable/archivo') },
+	space: { name: 'Space Grotesk', family: "'Space Grotesk Variable'", file: 'space-grotesk', load: () => import('@fontsource-variable/space-grotesk') },
+	archivo: { name: 'Archivo', family: "'Archivo Variable'", file: 'archivo', load: () => import('@fontsource-variable/archivo') },
 	barlow: {
 		name: 'Barlow',
 		family: "'Barlow'",
+		file: 'barlow',
 		load: () => Promise.all([import('@fontsource/barlow/400.css'), import('@fontsource/barlow/700.css')])
 	},
 	plex: {
 		name: 'IBM Plex Sans',
 		family: "'IBM Plex Sans'",
+		file: 'ibm-plex-sans',
 		load: () => Promise.all([import('@fontsource/ibm-plex-sans/400.css'), import('@fontsource/ibm-plex-sans/700.css')])
 	},
 	atkinson: {
 		name: 'Atkinson Hyperlegible',
 		family: "'Atkinson Hyperlegible'",
+		file: 'atkinson-hyperlegible',
 		load: () =>
 			Promise.all([import('@fontsource/atkinson-hyperlegible/400.css'), import('@fontsource/atkinson-hyperlegible/700.css')])
 	},
-	serif: { name: 'Source Serif 4', family: "'Source Serif 4 Variable'", load: () => import('@fontsource-variable/source-serif-4') },
-	mono: { name: 'JetBrains Mono', family: "'JetBrains Mono Variable'", load: () => import('@fontsource-variable/jetbrains-mono') }
+	serif: { name: 'Source Serif 4', family: "'Source Serif 4 Variable'", file: 'source-serif-4', load: () => import('@fontsource-variable/source-serif-4') },
+	mono: { name: 'JetBrains Mono', family: "'JetBrains Mono Variable'", file: 'jetbrains-mono', load: () => import('@fontsource-variable/jetbrains-mono') }
 } as const;
 export type ReadFontId = keyof typeof READ_FONTS;
 
@@ -137,7 +141,9 @@ function apply() {
 	root.setProperty('--font-body-weight', String(f.bodyWeight));
 	root.setProperty('--font-wide', String(f.wide));
 	const r = READ_FONTS[l.read as ReadFontId] ?? READ_FONTS[DEFAULTS.read];
-	r.load(); // the stack below falls back to system-ui until it arrives
+	// The stack below falls back to system-ui until it arrives. Fetching the font
+	// file now, not when a page first shows a paragraph, gets it saved for offline.
+	r.load().then(() => document.fonts.load(`16px ${r.family}`)).catch(() => {});
 	root.setProperty('--font-read', `${r.family}, system-ui, sans-serif`);
 }
 

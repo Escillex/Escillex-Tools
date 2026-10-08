@@ -1,7 +1,9 @@
 /**
- * Files BG REMOVE needs only once someone actually uses it. The service
- * worker skips them when installing (so every device doesn't download
- * megabytes it may never use) and caches them on first use instead.
+ * Files needed only once someone actually uses them: BG REMOVE's runtime,
+ * and every Web Worker's code (BG REMOVE's, and the QR scanner's fallback
+ * for browsers with no QR reader of their own). The service worker skips
+ * them when installing (so every device doesn't download megabytes it may
+ * never use) and caches them on first use instead.
  *
  * SvelteKit's manifest lists paths without a leading slash ('_app/...'),
  * requests have one ('/_app/...'), so everything here accepts both.

@@ -5,6 +5,7 @@
 	import { tools } from '#lib/apps.ts';
 	import { install } from '#lib/core/install.svelte.ts';
 	import { update } from '#lib/core/update.svelte.ts';
+	import { saving } from '#lib/core/saving.svelte.ts';
 	import { tick, unlockFeedback } from '#lib/ui/feedback.ts';
 	import Sheet from '#lib/ui/Sheet.svelte';
 	import SyncPanel from '#lib/core/sync/SyncPanel.svelte';
@@ -102,7 +103,14 @@
 <div class="screen">
 	<header class="strip">
 		<span class="label">{today} · {tools.length} {tools.length === 1 ? 'tool' : 'tools'}</span>
-		{#if sync.paired}<span class="label">Paired</span>{/if}
+		{#if saving.progress}
+			{@const p = saving.progress}
+			<span class="label">{p.update ? 'Downloading update' : 'Saving for offline'} · {p.done}/{p.total}</span>
+			<!-- The strip's bottom line fills up as files arrive. -->
+			<i class="saved" role="progressbar" aria-label="Saving for offline" aria-valuemin={0} aria-valuemax={p.total} aria-valuenow={p.done} style:--p={p.done / p.total}></i>
+		{:else if sync.paired}
+			<span class="label">Paired</span>
+		{/if}
 	</header>
 	{#if !hinted}<p class="label hint">Turn ▲▼ · tap or pull › to open</p>{/if}
 
@@ -163,10 +171,26 @@
 		margin-inline: -16px;
 	}
 	.strip {
+		position: relative;
 		display: flex;
 		justify-content: space-between;
 		padding-bottom: 8px;
 		border-bottom: 2px solid var(--line);
+	}
+	/* While saving, the strip's line dims into a track and the bar fills it left to right. */
+	.strip:has(.saved) {
+		border-bottom-color: var(--faint);
+	}
+	.saved {
+		position: absolute;
+		left: 0;
+		right: 0;
+		bottom: -2px;
+		height: 2px;
+		background: var(--accent);
+		transform: scaleX(var(--p));
+		transform-origin: left;
+		transition: transform 200ms ease-out;
 	}
 	.hint {
 		margin-top: -4px;

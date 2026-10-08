@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { flushSync } from 'svelte';
+	import { flushSync, onMount } from 'svelte';
 	import { live } from '#lib/live.svelte.ts';
 	import {
 		budgetSummary,
@@ -12,6 +12,7 @@
 	} from '#lib/finance/data.ts';
 	import { tick, unlockFeedback } from '#lib/ui/feedback.ts';
 	import Setup from '#lib/finance/Setup.svelte';
+	import { trackViewport, viewport } from '#lib/ui/viewport.svelte.ts';
 	import Entry from '#lib/finance/Entry.svelte';
 	import WalletLoop from '#lib/ui/WalletLoop.svelte';
 	import ModeSwitch from '#lib/ui/ModeSwitch.svelte';
@@ -79,6 +80,21 @@
 	const ready = $derived(wallets.loaded && summary.loaded);
 	const needsSetup = $derived(ready && (wallets.current.length === 0 || !summary.current));
 
+	/* ---------- setup: fit above the keyboard ---------- */
+	onMount(trackViewport);
+
+	/**
+	 * The keyboard opens after a field takes focus, so the browser's own
+	 * "scroll it into view" runs too early. Once the visible area has
+	 * shrunk, bring the focused field (and the buttons under it) back up.
+	 */
+	let setupEl = $state<HTMLElement>();
+	$effect(() => {
+		void viewport.height;
+		const el = document.activeElement;
+		if (setupEl && el instanceof HTMLElement && setupEl.contains(el)) el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+	});
+
 	/* ---------- logging ---------- */
 	let entry = $state<{ initial: string } | null>(null);
 	const selectedWallet = $derived(selected === 0 ? null : (wallets.current[selected - 1] ?? null));
@@ -128,11 +144,17 @@
 </svelte:head>
 
 
-<div class="screen">
+<div
+	class="screen"
+	class:fit={needsSetup}
+	class:keyboard={needsSetup && viewport.keyboardOpen}
+	style:top={needsSetup && viewport.height ? `${viewport.top}px` : null}
+	style:height={needsSetup && viewport.height ? `${viewport.height}px` : null}
+>
 	<a class="back circle" href="/" aria-label="Back to tools">←</a>
 
 	{#if needsSetup}
-		<Setup wallets={wallets.current} />
+		<div class="setup" bind:this={setupEl}><Setup wallets={wallets.current} /></div>
 	{:else if ready}
 		<div class="center">
 			<div class="mode">
@@ -206,6 +228,43 @@
 		transition:
 			background-color 350ms ease,
 			color 350ms ease;
+	}
+	/* Setup has inputs: the screen fits the area above the keyboard and
+	   scrolls when the form is taller than that. */
+	.screen.fit {
+		position: fixed;
+		top: 0;
+		left: 0;
+		right: 0;
+		min-height: 0;
+		height: 100dvh;
+		justify-content: flex-start;
+		overflow-y: auto;
+	}
+	/* Glide, not jump, when the keyboard opens or closes. */
+	@media (prefers-reduced-motion: no-preference) {
+		.screen.fit {
+			transition:
+				height 200ms cubic-bezier(0.2, 0.8, 0.2, 1),
+				background-color 350ms ease,
+				color 350ms ease;
+		}
+	}
+	/* In a browser tab (not the installed app), Chrome's address bar can sit at the
+	   bottom, over the page, while the keyboard is open. Extra room at the end lets
+	   the form scroll clear of it. */
+	@media (display-mode: browser) {
+		.screen.fit.keyboard {
+			padding-bottom: 80px;
+		}
+	}
+	/* margin auto centers it when it fits, and lets it scroll from the top when it doesn't. */
+	.setup {
+		display: flex;
+		justify-content: center;
+		width: 100%;
+		margin-block: auto;
+		padding-top: 56px; /* clear of the back button */
 	}
 	.back {
 		position: absolute;

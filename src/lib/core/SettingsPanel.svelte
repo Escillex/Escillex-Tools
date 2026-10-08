@@ -11,8 +11,14 @@
 	import { contrast, textOn } from '#lib/ui/color.ts';
 	import { FONTS, READ_FONTS, SWATCHES, appPalette, theme, type FontId, type ReadFontId } from './theme.svelte';
 	import { CURRENCIES, currencyName, formatMoney, money, setCurrency, type Currency } from './currency.svelte';
+	import { offlineFonts, watchOfflineFonts } from './offlineFonts.svelte';
 
 	let { onclose }: { onclose: () => void } = $props();
+
+	// Offline, only fonts this device has saved are offered (plus whatever is picked now).
+	watchOfflineFonts();
+	const fonts = $derived(Object.entries(FONTS).filter(([id, f]) => id === theme.font || offlineFonts.usable(f.file)));
+	const readFonts = $derived(Object.entries(READ_FONTS).filter(([id, f]) => id === theme.read || offlineFonts.usable(f.file)));
 
 	function pickFont(id: FontId) {
 		unlockFeedback();
@@ -59,7 +65,7 @@
 
 	<h3 class="display">Font</h3>
 	<div class="fonts" role="radiogroup" aria-label="Font">
-		{#each Object.entries(FONTS) as [id, f] (id)}
+		{#each fonts as [id, f] (id)}
 			<button
 				type="button"
 				role="radio"
@@ -77,7 +83,7 @@
 
 	<h3 class="display">Reading font</h3>
 	<div class="fonts" role="radiogroup" aria-label="Reading font">
-		{#each Object.entries(READ_FONTS) as [id, f] (id)}
+		{#each readFonts as [id, f] (id)}
 			<button
 				type="button"
 				role="radio"

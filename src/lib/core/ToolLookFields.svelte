@@ -7,9 +7,15 @@
 	import ColorField from '#lib/ui/ColorField.svelte';
 	import { tick, unlockFeedback } from '#lib/ui/feedback.ts';
 	import { FONTS, READ_FONTS, SWATCHES, globalLook, resolveInk, toolTheme } from './theme.svelte';
+	import { offlineFonts, watchOfflineFonts } from './offlineFonts.svelte';
 
 	const g = $derived(globalLook());
 	const t = $derived(toolTheme.look);
+
+	// Offline, only fonts this device has saved are offered (plus whatever is picked now).
+	watchOfflineFonts();
+	const fonts = $derived(Object.entries(FONTS).filter(([id, f]) => id === t.font || offlineFonts.usable(f.file)));
+	const readFonts = $derived(Object.entries(READ_FONTS).filter(([id, f]) => id === t.read || offlineFonts.usable(f.file)));
 
 	function pick(patch: Parameters<typeof toolTheme.set>[0]) {
 		unlockFeedback();
@@ -48,7 +54,7 @@
 	<button type="button" role="radio" aria-checked={!t.font} class="opt" onclick={() => pick({ font: null })}>
 		<span class:tag={!t.font}>Global · {FONTS[g.font as keyof typeof FONTS].name}</span>
 	</button>
-	{#each Object.entries(FONTS) as [id, f] (id)}
+	{#each fonts as [id, f] (id)}
 		<button
 			type="button"
 			role="radio"
@@ -68,7 +74,7 @@
 	<button type="button" role="radio" aria-checked={!t.read} class="opt" onclick={() => pick({ read: null })}>
 		<span class:tag={!t.read}>Global · {READ_FONTS[g.read as keyof typeof READ_FONTS].name}</span>
 	</button>
-	{#each Object.entries(READ_FONTS) as [id, f] (id)}
+	{#each readFonts as [id, f] (id)}
 		<button
 			type="button"
 			role="radio"

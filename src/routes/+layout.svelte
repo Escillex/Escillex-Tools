@@ -4,6 +4,7 @@
 	import { install, listenForInstall } from '#lib/core/install.svelte.ts';
 	import InstallGate from '#lib/core/InstallGate.svelte';
 	import { listenForUpdates } from '#lib/core/update.svelte.ts';
+	import { listenForSaving } from '#lib/core/saving.svelte.ts';
 	import { loadTheme } from '#lib/core/theme.svelte.ts';
 	import { loadCurrency } from '#lib/core/currency.svelte.ts';
 	import { onNavigate } from '$app/navigation';
@@ -51,6 +52,7 @@
 	// the launcher page has even finished loading.
 	listenForInstall();
 	listenForUpdates();
+	listenForSaving();
 	loadTheme();
 	loadCurrency();
 

@@ -6,6 +6,7 @@
 	 * number) flips the sign instead of becoming part of the number.
 	 */
 	import { onMount } from 'svelte';
+	import { trackViewport, viewport } from '#lib/ui/viewport.svelte.ts';
 	import { tick, unlockFeedback } from '#lib/ui/feedback.ts';
 	import RollingNumber from '#lib/ui/RollingNumber.svelte';
 	import WalletLoop from '#lib/ui/WalletLoop.svelte';
@@ -64,8 +65,7 @@
 		input.focus();
 	}
 
-	function submit(e: SubmitEvent) {
-		e.preventDefault();
+	function submit() {
 		const amount = Number(digits);
 		if (!walletName) {
 			error = 'Swipe to a wallet first';
@@ -80,7 +80,14 @@
 
 	function onKeyDown(e: KeyboardEvent) {
 		if (e.key === 'Escape') oncancel();
+		else if (e.key === 'Enter') {
+			e.preventDefault();
+			submit();
+		}
 	}
+
+	// Fit above the keyboard (see viewport.svelte.ts).
+	onMount(trackViewport);
 
 	// onMount, not $effect: this must run once, not again every time `digits` changes.
 	onMount(() => {
@@ -192,7 +199,8 @@
 	const keepFocus = (e: PointerEvent) => e.preventDefault();
 </script>
 
-<form class="entry" onsubmit={submit}>
+<!-- Not a <form>: inside one, Chrome puts its passwords / cards / addresses bar over the keyboard. -->
+<div class="entry" style:top={viewport.height && `${viewport.top}px`} style:height={viewport.height && `${viewport.height}px`}>
 	<input
 		bind:this={input}
 		class="sink"
@@ -206,53 +214,75 @@
 	/>
 
 
-	<div class="to display">
-		<WalletLoop {items} bind:selected />
-	</div>
-	<p class="balance label">Balance {formatMoney(balance)}</p>
+	<div class="body">
+		<div class="to display">
+			<WalletLoop {items} bind:selected />
+		</div>
+		<p class="balance label">Balance {formatMoney(balance)}</p>
 
-	<div class="line display" style:--chars={Math.max(1, formatWhole(whole).length + fraction.length)}>
-		<button type="button" class="sign" onpointerdown={keepFocus} onclick={flip} aria-label={sign === 1 ? 'Money in. Switch to spending' : 'Spending. Switch to money in'}>
-			<span class="tag">{sign === 1 ? '+' : '−'}</span>
-		</button>
-		<span
-			class="amount"
-			aria-hidden="true"
-			bind:this={amountEl}
-			onpointerdown={onPointerDown}
-			onpointermove={onPointerMove}
-			onpointerup={onPointerUp}
-			onpointercancel={onPointerUp}
-		>
-			<RollingNumber value={whole} fast={adjusting || badge !== null} />{fraction}
-			{#if badge}<span class="badge">{badge}</span>{/if}
-		</span>
-		<button class="enter" onpointerdown={keepFocus} aria-label="Log it">↵</button>
-	</div>
+		<div class="line display" style:--chars={Math.max(1, formatWhole(whole).length + fraction.length)}>
+			<button type="button" class="sign" onpointerdown={keepFocus} onclick={flip} aria-label={sign === 1 ? 'Money in. Switch to spending' : 'Spending. Switch to money in'}>
+				<span class="tag">{sign === 1 ? '+' : '−'}</span>
+			</button>
+			<span
+				class="amount"
+				aria-hidden="true"
+				bind:this={amountEl}
+				onpointerdown={onPointerDown}
+				onpointermove={onPointerMove}
+				onpointerup={onPointerUp}
+				onpointercancel={onPointerUp}
+			>
+				<RollingNumber value={whole} fast={adjusting || badge !== null} />{fraction}
+				{#if badge}<span class="badge">{badge}</span>{/if}
+			</span>
+			<button type="button" class="enter" onpointerdown={keepFocus} onclick={submit} aria-label="Log it">↵</button>
+		</div>
 
-	<p class="hint label">
-		{#if error}<span class="error">{error}</span>{:else}{sign === 1 ? 'Money in' : 'Spent'} · type, or drag the number up and down{/if}
-	</p>
+		<p class="hint label">
+			{#if error}<span class="error">{error}</span>{:else}{sign === 1 ? 'Money in' : 'Spent'} · type, or drag the number up and down{/if}
+		</p>
+	</div>
 
 	<div class="actions">
 		<button type="button" class="btn" onpointerdown={keepFocus} onclick={oncancel}>Cancel</button>
 	</div>
-</form>
+</div>
 
 <style>
+	/* Without visualViewport (old browsers) it simply fills the screen. */
 	.entry {
-		container-type: inline-size;
+		container-type: size; /* the number sizes itself to this box's width and height */
 		position: fixed;
-		inset: 0;
+		top: 0;
+		left: 0;
+		right: 0;
+		height: 100dvh;
+		box-sizing: border-box;
 		z-index: 10;
 		background: var(--bg);
 		color: var(--ink);
 		display: flex;
 		flex-direction: column;
 		align-items: center;
+		padding: 16px 16px calc(16px + env(safe-area-inset-bottom, 0px));
+	}
+	/* Glide, not jump, when the keyboard opens or closes. */
+	@media (prefers-reduced-motion: no-preference) {
+		.entry {
+			transition: height 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
+		}
+	}
+	/* Everything but Cancel, centered in the space above it. */
+	.body {
+		flex: 1;
+		min-height: 0;
+		width: 100%;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
 		justify-content: center;
 		gap: 8px;
-		padding: 16px;
 	}
 	.sink {
 		position: absolute;
@@ -278,11 +308,13 @@
 		align-items: center;
 		column-gap: 0.12em;
 		width: 100%;
-		/* Auto-fit like the Wallet number; the middle column gets ~60% of the width. */
+		/* Auto-fit like the Wallet number; the middle column gets ~60% of the width.
+		   The cqh cap shrinks it when the keyboard leaves little height. */
 		font-size: min(
 			calc(14rem / var(--font-wide)),
 			calc(38vw / var(--font-wide)),
-			calc(60cqw / (var(--chars) * 0.56 * var(--font-wide)))
+			calc(60cqw / (var(--chars) * 0.56 * var(--font-wide))),
+			38cqh
 		);
 	}
 	.line button {
@@ -320,8 +352,7 @@
 		color: var(--danger);
 	}
 	.actions {
-		position: absolute;
-		bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+		flex: none;
 	}
 	/* Enter: a slanted accent block, the same shape as primary buttons. */
 	.line .enter {
