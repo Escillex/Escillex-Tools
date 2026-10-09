@@ -245,6 +245,7 @@
 
 <main class="screen">
 	<header class="top">
+		<a class="circle" href="/" aria-label="Back to tools">←</a>
 		<h1 class="display">BG REMOVE</h1>
 		<button type="button" class="circle" aria-label="Settings" onclick={() => (settings = true)}>⚙</button>
 	</header>
@@ -370,10 +371,12 @@
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
+		gap: 12px;
 		border-bottom: 2px solid var(--line);
 		padding-bottom: 8px;
 	}
 	h1 {
+		flex: 1;
 		margin: 0;
 		font-size: calc(2.4rem / var(--font-wide));
 	}

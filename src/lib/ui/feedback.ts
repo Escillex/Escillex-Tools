@@ -3,12 +3,27 @@
  *
  * Browsers only allow sound after the user has touched the page, so call
  * unlockFeedback() from a pointerdown/keydown handler before the first tick().
+ * Sound and haptics each follow their switch in Settings.
  */
 
 let ctx: AudioContext | null = null;
 let click: AudioBuffer | null = null;
 let iosSwitch: HTMLLabelElement | null = null;
 let lastTick = 0;
+
+// Settings → Sound / Haptics. Set at start-up (lib/core/feedbackPrefs) and whenever they change.
+let soundOn = true;
+let hapticsOn = true;
+
+export function setFeedbackGates(g: { sound: boolean; haptics: boolean }): void {
+	soundOn = g.sound;
+	hapticsOn = g.haptics;
+}
+
+/** The running audio context, or null when sound is off or not unlocked yet. Fidget's toy sounds play through it. */
+export function audio(): AudioContext | null {
+	return soundOn && ctx && ctx.state === 'running' ? ctx : null;
+}
 
 /** A 12ms burst of noise that fades out fast: sounds like a mechanical click. */
 function makeClick(audio: AudioContext): AudioBuffer {
@@ -76,6 +91,20 @@ export function tick(strong = false): void {
 	const now = performance.now();
 	if (now - lastTick < 28) return;
 	lastTick = now;
-	playClick(strong);
-	haptic(strong);
+	if (soundOn) playClick(strong);
+	if (hapticsOn) haptic(strong);
+}
+
+let lastBuzz = 0;
+
+/**
+ * Just the buzz, for toys that make their own sound. Rate-limited like
+ * tick() (its own clock, so a toy's buzz never swallows an unlock tick):
+ * a flung dial crosses a notch every frame, and that would be one long buzz.
+ */
+export function buzz(strong = false): void {
+	const now = performance.now();
+	if (now - lastBuzz < 28) return;
+	lastBuzz = now;
+	if (hapticsOn) haptic(strong);
 }

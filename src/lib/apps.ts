@@ -5,6 +5,7 @@
 import type { Table } from 'dexie';
 import type { SyncFields } from '#lib/finance/db.ts';
 import { db as financeDb } from '#lib/finance/db.ts';
+import { db as fidgetDb } from '#lib/fidget/db.ts';
 
 export interface ToolInfo {
 	id: string;
@@ -12,6 +13,8 @@ export interface ToolInfo {
 	href: string;
 	/** The tables "Sync all" copies between devices. Every record needs id/updatedAt/deleted. */
 	syncTables: Record<string, Table<SyncFields, string>>;
+	/** Tables that go in the .escb backup but never through live sync (they change too often to push). Same record rules as syncTables. */
+	backupTables?: Record<string, Table<SyncFields, string>>;
 	/** One short line under the name on the launcher dial: what the tool is for. */
 	description: string;
 }
@@ -44,5 +47,17 @@ export const tools: ToolInfo[] = [
 		description: 'CUT OUT ANY PHOTO',
 		// Cutouts can be gigabytes; they stay on each device (a dedicated transfer may come later).
 		syncTables: {}
+	},
+	{
+		id: 'fidget',
+		name: 'FIDGET',
+		href: '/fidget',
+		description: 'CLICK · POP · SPIN',
+		// Counts change on every press: kept in backups, never pushed through live sync.
+		syncTables: {},
+		backupTables: {
+			counts: fidgetDb.counts as unknown as Table<SyncFields, string>,
+			facts: fidgetDb.facts as unknown as Table<SyncFields, string>
+		}
 	}
 ];

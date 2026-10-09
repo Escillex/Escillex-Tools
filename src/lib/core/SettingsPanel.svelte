@@ -12,6 +12,7 @@
 	import { FONTS, READ_FONTS, SWATCHES, appPalette, theme, type FontId, type ReadFontId } from './theme.svelte';
 	import { CURRENCIES, currencyName, formatMoney, money, setCurrency, type Currency } from './currency.svelte';
 	import { offlineFonts, watchOfflineFonts } from './offlineFonts.svelte';
+	import { feedback } from './feedbackPrefs.svelte';
 
 	let { onclose }: { onclose: () => void } = $props();
 
@@ -38,6 +39,13 @@
 		return contrast(p.ink, p.bg) >= 3;
 	});
 	let armedReset = $state(false);
+
+	/** Flip first, then tick: turning Haptics on buzzes to confirm, turning it off stays still. */
+	function toggleFeedback(key: 'sound' | 'haptics') {
+		unlockFeedback();
+		feedback.set({ [key]: !feedback[key] });
+		tick();
+	}
 </script>
 
 <Sheet title="Settings" {onclose}>
@@ -48,6 +56,17 @@
 		{/each}
 	</select>
 	<p class="label">Shows as {formatMoney(123456)}. Only changes how amounts look, not the numbers.</p>
+
+	<h3 class="display">Feedback</h3>
+	<button type="button" class="switch" role="switch" aria-checked={feedback.sound} onclick={() => toggleFeedback('sound')}>
+		<span>Sound</span>
+		<span class="dot" class:on={feedback.sound}></span>
+	</button>
+	<button type="button" class="switch" role="switch" aria-checked={feedback.haptics} onclick={() => toggleFeedback('haptics')}>
+		<span>Haptics</span>
+		<span class="dot" class:on={feedback.haptics}></span>
+	</button>
+	<p class="label">Clicks and toy sounds, and the buzz on phones that have one. This device only.</p>
 
 	<h3 class="display">Colors</h3>
 	<ColorField label="Background" value={theme.bg} swatches={SWATCHES.bg} onchange={(v) => theme.set({ bg: v })} />
@@ -134,6 +153,31 @@
 		font-style: var(--font-style);
 		font-weight: var(--font-body-weight);
 		cursor: pointer;
+	}
+	.switch {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		background: none;
+		border: 0;
+		border-bottom: 2px solid var(--line);
+		color: var(--ink);
+		font-family: var(--font-read);
+		font-style: normal;
+		font-size: 1.05rem;
+		padding: 8px 2px;
+		cursor: pointer;
+		text-align: left;
+	}
+	.dot {
+		width: 1rem;
+		height: 1rem;
+		border: 2px solid var(--line);
+		border-radius: 50%;
+	}
+	.dot.on {
+		background: var(--accent);
+		border-color: var(--accent);
 	}
 	.warn {
 		margin: 0;

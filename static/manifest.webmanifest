@@ -58,6 +58,18 @@
 					"type": "image/png"
 				}
 			]
+		},
+		{
+			"name": "Fidget",
+			"short_name": "Fidget",
+			"url": "/fidget",
+			"icons": [
+				{
+					"src": "/icon-192.png",
+					"sizes": "192x192",
+					"type": "image/png"
+				}
+			]
 		}
 	],
 	"file_handlers": [

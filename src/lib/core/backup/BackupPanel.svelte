@@ -87,7 +87,7 @@
 		if (makeError || busy) return;
 		busy = true;
 		try {
-			const blob = await encodeBackup(await buildSnapshot(), password);
+			const blob = await encodeBackup(await buildSnapshot('backup'), password);
 			const name = backupFileName();
 			if (await saveFile(blob, name)) {
 				lastBackup = Date.now();
@@ -120,7 +120,7 @@
 		try {
 			const data = await decodeBackup<unknown>(view.bytes, password);
 			if (!isSnapshot(data)) throw new BackupError("This backup's contents aren't readable.", 'not-a-backup');
-			const comparison = compare(await buildSnapshot(), [data]);
+			const comparison = compare(await buildSnapshot('backup'), [data], 'backup');
 			const fileName = view.file.name;
 			tick(true);
 			reset({ step: 'review', snapshot: data, comparison, fileName });
@@ -138,7 +138,7 @@
 			return;
 		}
 		busy = true;
-		const written = mode === 'merge' ? await applyRemotes([view.snapshot]) : await replaceWith(view.snapshot);
+		const written = mode === 'merge' ? await applyRemotes([view.snapshot], 'backup') : await replaceWith(view.snapshot, 'backup');
 		tick(true);
 		reset({ step: 'restored', written });
 	}

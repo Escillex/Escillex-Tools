@@ -5,6 +5,7 @@
  * included. Merging is per record: for each id, the copy with the newer
  * `updatedAt` wins. Both devices apply the same rule to each other's
  * snapshot, so they end up identical no matter who syncs first.
+ * Live sync covers syncTables; a backup file also covers backupTables (see scope.ts).
  */
 import { tools } from '#lib/apps.ts';
 import type { SyncFields } from '#lib/finance/db.ts';
@@ -12,6 +13,7 @@ import { getSetting } from '#lib/core/db.ts';
 import { currencyForSync, isCurrency, setCurrency } from '#lib/core/currency.svelte.ts';
 import { applyLooks, looksForSync } from '#lib/core/theme.svelte.ts';
 import { incomingLooks, outgoingLooks, type Looks } from './looks';
+import { tablesFor, type Scope } from './scope';
 
 type Rec = SyncFields & Record<string, unknown>;
 
@@ -38,11 +40,11 @@ function newestCurrency(snaps: Snapshot[]): Stamped<string> | null {
 	return best;
 }
 
-export async function buildSnapshot(): Promise<Snapshot> {
+export async function buildSnapshot(scope: Scope = 'sync'): Promise<Snapshot> {
 	const out: Snapshot['tools'] = {};
 	for (const tool of tools) {
 		out[tool.id] = {};
-		for (const [name, table] of Object.entries(tool.syncTables)) {
+		for (const [name, table] of Object.entries(tablesFor(tool, scope))) {
 			out[tool.id][name] = (await table.toArray()) as Rec[];
 		}
 	}
@@ -88,12 +90,12 @@ function count(target: Counts, rec: Rec, existedBefore: boolean) {
 }
 
 /** Compare our snapshot with one or more from other devices. Nothing is written. */
-export function compare(local: Snapshot, remotes: Snapshot[]): Comparison {
+export function compare(local: Snapshot, remotes: Snapshot[], scope: Scope = 'sync'): Comparison {
 	const result: Comparison = { incoming: zero(), outgoing: zero(), byTool: {} };
 
 	for (const tool of tools) {
 		const t = (result.byTool[tool.id] = { incoming: zero(), outgoing: zero() });
-		for (const table of Object.keys(tool.syncTables)) {
+		for (const table of Object.keys(tablesFor(tool, scope))) {
 			const mine = new Map((local.tools[tool.id]?.[table] ?? []).map((r) => [r.id, r]));
 
 			// The newest version of each record across all the other devices.
@@ -146,10 +148,10 @@ export function isSnapshot(v: unknown): v is Snapshot {
  * Make this device exactly match a snapshot: every synced table is
  * emptied and refilled from it. Used by "Replace everything" on restore.
  */
-export async function replaceWith(snapshot: Snapshot): Promise<number> {
+export async function replaceWith(snapshot: Snapshot, scope: Scope = 'sync'): Promise<number> {
 	let written = 0;
 	for (const tool of tools) {
-		for (const [name, table] of Object.entries(tool.syncTables)) {
+		for (const [name, table] of Object.entries(tablesFor(tool, scope))) {
 			const records = (snapshot.tools[tool.id]?.[name] ?? []).filter(isRec);
 			await table.db.transaction('rw', table, async () => {
 				await table.clear();
@@ -172,10 +174,10 @@ export async function replaceWith(snapshot: Snapshot): Promise<number> {
  * you changed while the comparison was on screen isn't overwritten by an
  * older copy.
  */
-export async function applyRemotes(remotes: Snapshot[]): Promise<number> {
+export async function applyRemotes(remotes: Snapshot[], scope: Scope = 'sync'): Promise<number> {
 	let written = 0;
 	for (const tool of tools) {
-		for (const [name, table] of Object.entries(tool.syncTables)) {
+		for (const [name, table] of Object.entries(tablesFor(tool, scope))) {
 			const newest = new Map<string, Rec>();
 			for (const remote of remotes) {
 				for (const r of remote.tools[tool.id]?.[name] ?? []) {

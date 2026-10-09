@@ -7,6 +7,7 @@
 	import { listenForSaving } from '#lib/core/saving.svelte.ts';
 	import { loadTheme } from '#lib/core/theme.svelte.ts';
 	import { loadCurrency } from '#lib/core/currency.svelte.ts';
+	import { loadFeedback } from '#lib/core/feedbackPrefs.svelte.ts';
 	import { onNavigate } from '$app/navigation';
 	import { dev } from '$app/env';
 	import { tools } from '#lib/apps.ts';
@@ -55,6 +56,7 @@
 	listenForSaving();
 	loadTheme();
 	loadCurrency();
+	loadFeedback();
 
 	$effect(() => {
 		initDevice();
