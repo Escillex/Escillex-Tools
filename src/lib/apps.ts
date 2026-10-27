@@ -6,6 +6,7 @@ import type { Table } from 'dexie';
 import type { SyncFields } from '#lib/finance/db.ts';
 import { db as financeDb } from '#lib/finance/db.ts';
 import { db as fidgetDb } from '#lib/fidget/db.ts';
+import { db as focusDb } from '#lib/focus/db.ts';
 
 export interface ToolInfo {
 	id: string;
@@ -58,6 +59,18 @@ export const tools: ToolInfo[] = [
 		backupTables: {
 			counts: fidgetDb.counts as unknown as Table<SyncFields, string>,
 			facts: fidgetDb.facts as unknown as Table<SyncFields, string>
+		}
+	},
+	{
+		id: 'focus',
+		name: 'FOCUS',
+		href: '/focus',
+		description: 'POMODORO · TASKS · TODAY',
+		// Sync all is a manual swap, so a log that grows with every block costs no requests until you sync.
+		syncTables: {
+			presets: focusDb.presets as unknown as Table<SyncFields, string>,
+			tasks: focusDb.tasks as unknown as Table<SyncFields, string>,
+			log: focusDb.log as unknown as Table<SyncFields, string>
 		}
 	}
 ];

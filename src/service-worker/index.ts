@@ -142,3 +142,16 @@ self.addEventListener('fetch', (event) => {
 		})()
 	);
 });
+
+// FOCUS notifications: a tap brings the timer back (an open FOCUS tab if there is one).
+self.addEventListener('notificationclick', (event) => {
+	event.notification.close();
+	event.waitUntil(
+		(async () => {
+			const open = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+			const tab = open.find((c) => new URL(c.url).pathname.startsWith('/focus'));
+			if (tab) await tab.focus();
+			else await self.clients.openWindow('/focus');
+		})()
+	);
+});
